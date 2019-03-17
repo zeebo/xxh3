@@ -11,8 +11,8 @@ type (
 )
 
 const (
-	_stripe_len = 64
-	_block_len  = 1024
+	_stripe = 64
+	_block  = 1024
 
 	prime64_1 = 11400714785074694791
 	prime64_2 = 14029467366897019727
@@ -36,10 +36,12 @@ var key = ptr(&[...]uint32{
 	0x45cb3a8f, 0x95160428, 0xafd7fbca, 0xbb4b407e,
 })
 
+// HashString returns the hash of the string.
 func HashString(s string) uint64 {
 	return hash(*(*ptr)(ptr(&s)), uint64(len(s)))
 }
 
+// Hash returns the hash of the byte slice.
 func Hash(b []byte) uint64 {
 	return hash(*(*ptr)(ptr(&b)), uint64(len(b)))
 }
@@ -86,9 +88,9 @@ func hash(p ptr, l uint64) uint64 {
 			acc ^= acc >> 32
 			return acc
 
-		} else {
-			return 0
 		}
+
+		return 0
 	}
 
 	var hi1, lo1, hi2, lo2, hi3, lo3, hi4, lo4 uint64
@@ -155,7 +157,7 @@ func hash(p ptr, l uint64) uint64 {
 
 long:
 	acc := [8]uint64{0, prime64_1, prime64_2, prime64_3, prime64_4, prime64_5, 0, 0}
-	blocks := l / _block_len
+	blocks := l / _block
 
 	for n := uint64(0); n < blocks; n++ {
 		k := key
@@ -186,7 +188,7 @@ long:
 			l7, r7 := *(*uint32)(ptr(ui(p) + 56)), *(*uint32)(ptr(ui(p) + 60))
 			acc[7] += uint64(l7+*(*uint32)(ptr(ui(k) + 56)))*uint64(r7+*(*uint32)(ptr(ui(k) + 60))) + uint64(l7) + (uint64(r7) << 32)
 
-			p, k, l = ptr(ui(p)+_stripe_len), ptr(ui(k)+8), l-_stripe_len
+			p, k, l = ptr(ui(p)+_stripe), ptr(ui(k)+8), l-_stripe
 		}
 
 		// scramble acc
@@ -216,7 +218,7 @@ long:
 	}
 
 	if l > 0 {
-		t, k := (l%_block_len)/_stripe_len, key
+		t, k := (l%_block)/_stripe, key
 		for i := uint64(0); i < t; i++ {
 			l0, r0 := *(*uint32)(ptr(ui(p) + 0)), *(*uint32)(ptr(ui(p) + 4))
 			acc[0] += uint64(l0+*(*uint32)(ptr(ui(k) + 0)))*uint64(r0+*(*uint32)(ptr(ui(k) + 4))) + uint64(l0) + (uint64(r0) << 32)
@@ -242,11 +244,11 @@ long:
 			l7, r7 := *(*uint32)(ptr(ui(p) + 56)), *(*uint32)(ptr(ui(p) + 60))
 			acc[7] += uint64(l7+*(*uint32)(ptr(ui(k) + 56)))*uint64(r7+*(*uint32)(ptr(ui(k) + 60))) + uint64(l7) + (uint64(r7) << 32)
 
-			p, k, l = ptr(ui(p)+_stripe_len), ptr(ui(k)+8), l-_stripe_len
+			p, k, l = ptr(ui(p)+_stripe), ptr(ui(k)+8), l-_stripe
 		}
 
 		if l > 0 {
-			p = ptr(ui(p) - uintptr(_stripe_len-l))
+			p = ptr(ui(p) - uintptr(_stripe-l))
 
 			l0, r0 := *(*uint32)(ptr(ui(p) + 0)), *(*uint32)(ptr(ui(p) + 4))
 			acc[0] += uint64(l0+*(*uint32)(ptr(ui(k) + 0)))*uint64(r0+*(*uint32)(ptr(ui(k) + 4))) + uint64(l0) + (uint64(r0) << 32)
