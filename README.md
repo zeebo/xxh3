@@ -1,7 +1,7 @@
 # XXH3
-[![GoDoc](https://godoc.org/github.com/zeebo/this?status.svg)](https://godoc.org/github.com/zeebo/this)
-[![Sourcegraph](https://sourcegraph.com/github.com/zeebo/this/-/badge.svg)](https://sourcegraph.com/github.com/zeebo/this?badge)
-[![Go Report Card](https://goreportcard.com/badge/github.com/zeebo/this)](https://goreportcard.com/report/github.com/zeebo/this)
+[![GoDoc](https://godoc.org/github.com/zeebo/xxh3?status.svg)](https://godoc.org/github.com/zeebo/xxh3)
+[![Sourcegraph](https://sourcegraph.com/github.com/zeebo/xxh3/-/badge.svg)](https://sourcegraph.com/github.com/zeebo/xxh3?badge)
+[![Go Report Card](https://goreportcard.com/badge/github.com/zeebo/xxh3)](https://goreportcard.com/report/github.com/zeebo/xxh3)
 
 This package is a port of the [xxh3](https://github.com/Cyan4973/xxHash) library to Go. It is (currently) pure Go and performs best when strings are 128 bytes or shorter.
 
