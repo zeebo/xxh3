@@ -6,8 +6,9 @@ import (
 )
 
 type (
-	ptr = unsafe.Pointer
-	ui  = uintptr
+	ptr  = unsafe.Pointer
+	pptr = *unsafe.Pointer
+	ui   = uintptr
 )
 
 const (
@@ -36,130 +37,140 @@ var key = ptr(&[...]uint32{
 	0x45cb3a8f, 0x95160428, 0xafd7fbca, 0xbb4b407e,
 })
 
-// HashString returns the hash of the string.
+// HashString returns the hash of the byte slice.
 func HashString(s string) uint64 {
-	return hash(*(*ptr)(ptr(&s)), uint64(len(s)))
+	fn := hashMed
+	if len(s) <= 16 {
+		fn = hashSmall
+	}
+	return fn(s)
 }
 
 // Hash returns the hash of the byte slice.
 func Hash(b []byte) uint64 {
-	return hash(*(*ptr)(ptr(&b)), uint64(len(b)))
+	fn := hashMed
+	if len(b) <= 16 {
+		fn = hashSmall
+	}
+	return fn(*(*string)(ptr(&b)))
 }
 
-func hash(p ptr, l uint64) uint64 {
-	ol := l
+func hashSmall(s string) uint64 {
+	p, l := *(*ptr)(ptr(&s)), uint64(len(s))
 
-	if l <= 16 {
-		if l > 8 {
-			acc := prime64_1 * l
-			l1 := *(*uint64)(p) + *(*uint64)(key)
-			l2 := *(*uint64)(ptr(ui(p) + ui(l) - 8)) + *(*uint64)(ptr(ui(key) + 8))
-			hi, lo := bits.Mul64(l1, l2)
-			acc += hi + lo
+	if l > 8 {
+		acc := prime64_1 * l
+		l1 := *(*uint64)(p) + *(*uint64)(key)
+		l2 := *(*uint64)(ptr(ui(p) + ui(l) - 8)) + *(*uint64)(ptr(ui(key) + 8))
+		hi, lo := bits.Mul64(l1, l2)
+		acc += hi + lo
 
-			acc ^= acc >> 29
-			acc *= prime64_3
-			acc ^= acc >> 32
-			return acc
+		acc ^= acc >> 29
+		acc *= prime64_3
+		acc ^= acc >> 32
+		return acc
 
-		} else if l >= 4 {
-			acc := prime64_1 * l
-			l1 := *(*uint32)(p) + *(*uint32)(key)
-			l2 := *(*uint32)(ptr(ui(p) + ui(l) - 4)) + *(*uint32)(ptr(ui(key) + 4))
-			acc += uint64(l1) * uint64(l2)
+	} else if l >= 4 {
+		acc := prime64_1 * l
+		l1 := *(*uint32)(p) + *(*uint32)(key)
+		l2 := *(*uint32)(ptr(ui(p) + ui(l) - 4)) + *(*uint32)(ptr(ui(key) + 4))
+		acc += uint64(l1) * uint64(l2)
 
-			acc ^= acc >> 29
-			acc *= prime64_3
-			acc ^= acc >> 32
-			return acc
+		acc ^= acc >> 29
+		acc *= prime64_3
+		acc ^= acc >> 32
+		return acc
 
-		} else if l > 0 {
-			c1 := *(*uint8)(p)
-			c2 := *(*uint8)(ptr(ui(p) + (ui(l) >> 1)))
-			c3 := *(*uint8)(ptr(ui(p) + ui(l) - 1))
-			l1 := uint32(c1) + (uint32(c2) << 8)
-			l2 := uint32(l) + (uint32(c3) << 2)
-			m1 := uint64(l1 + *(*uint32)(ptr(ui(key) + 0)))
-			m2 := uint64(l2 + *(*uint32)(ptr(ui(key) + 4)))
-			acc := m1 * m2
+	} else if l > 0 {
+		c1 := *(*uint8)(p)
+		c2 := *(*uint8)(ptr(ui(p) + (ui(l) >> 1)))
+		c3 := *(*uint8)(ptr(ui(p) + ui(l) - 1))
+		l1 := uint32(c1) + (uint32(c2) << 8)
+		l2 := uint32(l) + (uint32(c3) << 2)
+		m1 := uint64(l1 + *(*uint32)(ptr(ui(key) + 0)))
+		m2 := uint64(l2 + *(*uint32)(ptr(ui(key) + 4)))
+		acc := m1 * m2
 
-			acc ^= acc >> 29
-			acc *= prime64_3
-			acc ^= acc >> 32
-			return acc
+		acc ^= acc >> 29
+		acc *= prime64_3
+		acc ^= acc >> 32
+		return acc
 
-		}
-
-		return 0
 	}
 
-	var hi1, lo1, hi2, lo2, hi3, lo3, hi4, lo4 uint64
+	return 0
+}
 
-	accs := prime64_1 * l
+func hashMed(s string) uint64 {
+	p, l := *(*ptr)(ptr(&s)), uint64(len(s))
+
+	acc := prime64_1 * l
 	if l > 32 {
 		if l > 64 {
 			if l > 96 {
 				if l > 128 {
-					goto long
+					return hashLarge(p, l)
 				}
-				hi1, lo1 = bits.Mul64(
+
+				hi1, lo1 := bits.Mul64(
 					*(*uint64)(ptr(ui(p) + 48))^*(*uint64)(ptr(ui(key) + 96)),
 					*(*uint64)(ptr(ui(p) + 48 + 8))^*(*uint64)(ptr(ui(key) + 96 + 8)),
 				)
-				accs += hi1 + lo1
+				acc += hi1 + lo1
 
-				hi2, lo2 = bits.Mul64(
+				hi2, lo2 := bits.Mul64(
 					*(*uint64)(ptr(ui(p) + ui(l) - 64))^*(*uint64)(ptr(ui(key) + 112)),
 					*(*uint64)(ptr(ui(p) + ui(l) - 64 + 8))^*(*uint64)(ptr(ui(key) + 112 + 8)),
 				)
-				accs += hi2 + lo2
+				acc += hi2 + lo2
 			}
-			hi1, lo1 = bits.Mul64(
+			hi1, lo1 := bits.Mul64(
 				*(*uint64)(ptr(ui(p) + 32))^*(*uint64)(ptr(ui(key) + 64)),
 				*(*uint64)(ptr(ui(p) + 32 + 8))^*(*uint64)(ptr(ui(key) + 64 + 8)),
 			)
-			accs += hi1 + lo1
+			acc += hi1 + lo1
 
-			hi2, lo2 = bits.Mul64(
+			hi2, lo2 := bits.Mul64(
 				*(*uint64)(ptr(ui(p) + ui(l) - 48))^*(*uint64)(ptr(ui(key) + 80)),
 				*(*uint64)(ptr(ui(p) + ui(l) - 48 + 8))^*(*uint64)(ptr(ui(key) + 80 + 8)),
 			)
-			accs += hi2 + lo2
+			acc += hi2 + lo2
 		}
-		hi1, lo1 = bits.Mul64(
+		hi1, lo1 := bits.Mul64(
 			*(*uint64)(ptr(ui(p) + 16))^*(*uint64)(ptr(ui(key) + 32)),
 			*(*uint64)(ptr(ui(p) + 16 + 8))^*(*uint64)(ptr(ui(key) + 32 + 8)),
 		)
-		accs += hi1 + lo1
+		acc += hi1 + lo1
 
-		hi2, lo2 = bits.Mul64(
+		hi2, lo2 := bits.Mul64(
 			*(*uint64)(ptr(ui(p) + ui(l) - 32))^*(*uint64)(ptr(ui(key) + 48)),
 			*(*uint64)(ptr(ui(p) + ui(l) - 32 + 8))^*(*uint64)(ptr(ui(key) + 48 + 8)),
 		)
-		accs += hi2 + lo2
+		acc += hi2 + lo2
 	}
-	hi1, lo1 = bits.Mul64(
+	hi1, lo1 := bits.Mul64(
 		*(*uint64)(ptr(ui(p) + 0))^*(*uint64)(ptr(ui(key) + 0)),
 		*(*uint64)(ptr(ui(p) + 0 + 8))^*(*uint64)(ptr(ui(key) + 0 + 8)),
 	)
-	accs += hi1 + lo1
+	acc += hi1 + lo1
 
-	hi2, lo2 = bits.Mul64(
+	hi2, lo2 := bits.Mul64(
 		*(*uint64)(ptr(ui(p) + ui(l) - 16))^*(*uint64)(ptr(ui(key) + 16)),
 		*(*uint64)(ptr(ui(p) + ui(l) - 16 + 8))^*(*uint64)(ptr(ui(key) + 16 + 8)),
 	)
-	accs += hi2 + lo2
+	acc += hi2 + lo2
 
-	accs ^= accs >> 29
-	accs *= prime64_3
-	accs ^= accs >> 32
-	return accs
+	acc ^= acc >> 29
+	acc *= prime64_3
+	acc ^= acc >> 32
+	return acc
+}
 
-long:
+func hashLarge(p ptr, l uint64) uint64 {
+	ol := l
 	acc := [8]uint64{0, prime64_1, prime64_2, prime64_3, prime64_4, prime64_5, 0, 0}
-	blocks := l / _block
 
-	for n := uint64(0); n < blocks; n++ {
+	for l >= _block {
 		k := key
 
 		// acc
@@ -188,7 +199,7 @@ long:
 			l7, r7 := *(*uint32)(ptr(ui(p) + 56)), *(*uint32)(ptr(ui(p) + 60))
 			acc[7] += uint64(l7+*(*uint32)(ptr(ui(k) + 56)))*uint64(r7+*(*uint32)(ptr(ui(k) + 60))) + uint64(l7) + (uint64(r7) << 32)
 
-			p, k, l = ptr(ui(p)+_stripe), ptr(ui(k)+8), l-_stripe
+			p, k = ptr(ui(p)+_stripe), ptr(ui(k)+8)
 		}
 
 		// scramble acc
@@ -215,6 +226,8 @@ long:
 
 		acc[7] ^= acc[7] >> 47
 		acc[7] = (uint64(uint32(acc[7])) * uint64(*(*uint32)(ptr(ui(k) + 56)))) ^ ((acc[7] >> 32) * uint64(*(*uint32)(ptr(ui(k) + 60))))
+
+		l -= 16 * _stripe
 	}
 
 	if l > 0 {
@@ -277,10 +290,10 @@ long:
 	}
 
 	// merge_accs
-	hi1, lo1 = bits.Mul64(acc[0]^*(*uint64)(ptr(ui(key) + 0)), acc[1]^*(*uint64)(ptr(ui(key) + 8)))
-	hi2, lo2 = bits.Mul64(acc[2]^*(*uint64)(ptr(ui(key) + 16)), acc[3]^*(*uint64)(ptr(ui(key) + 24)))
-	hi3, lo3 = bits.Mul64(acc[4]^*(*uint64)(ptr(ui(key) + 32)), acc[5]^*(*uint64)(ptr(ui(key) + 40)))
-	hi4, lo4 = bits.Mul64(acc[6]^*(*uint64)(ptr(ui(key) + 48)), acc[7]^*(*uint64)(ptr(ui(key) + 56)))
+	hi1, lo1 := bits.Mul64(acc[0]^*(*uint64)(ptr(ui(key) + 0)), acc[1]^*(*uint64)(ptr(ui(key) + 8)))
+	hi2, lo2 := bits.Mul64(acc[2]^*(*uint64)(ptr(ui(key) + 16)), acc[3]^*(*uint64)(ptr(ui(key) + 24)))
+	hi3, lo3 := bits.Mul64(acc[4]^*(*uint64)(ptr(ui(key) + 32)), acc[5]^*(*uint64)(ptr(ui(key) + 40)))
+	hi4, lo4 := bits.Mul64(acc[6]^*(*uint64)(ptr(ui(key) + 48)), acc[7]^*(*uint64)(ptr(ui(key) + 56)))
 	result := ol*prime64_1 + hi1 + lo1 + hi2 + lo2 + hi3 + lo3 + hi4 + lo4
 
 	result ^= result >> 29
