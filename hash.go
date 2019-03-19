@@ -3,7 +3,11 @@ package xxh3
 import (
 	"math/bits"
 	"unsafe"
+
+	"golang.org/x/sys/cpu"
 )
+
+var avx2 = cpu.X86.HasAVX2
 
 type (
 	ptr  = unsafe.Pointer
@@ -167,6 +171,10 @@ func hashMed(s string) uint64 {
 }
 
 func hashLarge(p ptr, l uint64) uint64 {
+	if avx2 {
+		return hashLargeAVX2(p, l)
+	}
+
 	ol := l
 	acc := [8]uint64{0, prime64_1, prime64_2, prime64_3, prime64_4, prime64_5, 0, 0}
 
@@ -295,6 +303,26 @@ func hashLarge(p ptr, l uint64) uint64 {
 	hi3, lo3 := bits.Mul64(acc[4]^*(*uint64)(ptr(ui(key) + 32)), acc[5]^*(*uint64)(ptr(ui(key) + 40)))
 	hi4, lo4 := bits.Mul64(acc[6]^*(*uint64)(ptr(ui(key) + 48)), acc[7]^*(*uint64)(ptr(ui(key) + 56)))
 	result := ol*prime64_1 + hi1 + lo1 + hi2 + lo2 + hi3 + lo3 + hi4 + lo4
+
+	result ^= result >> 29
+	result *= prime64_3
+	result ^= result >> 32
+	return result
+}
+
+//go:noescape
+func accum(acc *[8]uint64, data, key unsafe.Pointer, len uint64)
+
+func hashLargeAVX2(p ptr, l uint64) uint64 {
+	acc := [8]uint64{0, prime64_1, prime64_2, prime64_3, prime64_4, prime64_5, 0, 0}
+	accum(&acc, p, key, l)
+
+	// merge_accs
+	hi1, lo1 := bits.Mul64(acc[0]^*(*uint64)(ptr(ui(key) + 0)), acc[1]^*(*uint64)(ptr(ui(key) + 8)))
+	hi2, lo2 := bits.Mul64(acc[2]^*(*uint64)(ptr(ui(key) + 16)), acc[3]^*(*uint64)(ptr(ui(key) + 24)))
+	hi3, lo3 := bits.Mul64(acc[4]^*(*uint64)(ptr(ui(key) + 32)), acc[5]^*(*uint64)(ptr(ui(key) + 40)))
+	hi4, lo4 := bits.Mul64(acc[6]^*(*uint64)(ptr(ui(key) + 48)), acc[7]^*(*uint64)(ptr(ui(key) + 56)))
+	result := l*prime64_1 + hi1 + lo1 + hi2 + lo2 + hi3 + lo3 + hi4 + lo4
 
 	result ^= result >> 29
 	result *= prime64_3

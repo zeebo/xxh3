@@ -13,6 +13,7 @@ func Benchmark(b *testing.B) {
 			b.SetBytes(int64(i))
 			var acc uint64
 			d := bytes.Repeat([]byte("x"), i)
+			b.ReportAllocs()
 			b.ResetTimer()
 
 			for i := 0; i < b.N; i++ {
