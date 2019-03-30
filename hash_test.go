@@ -42,5 +42,5 @@ func Benchmark(b *testing.B) {
 	r(256)
 	r(512)
 	r(1024)
-	r(1024 * 1024)
+	r(100 * 1024)
 }

@@ -3,21 +3,18 @@ package xxh3
 import (
 	"math/bits"
 	"unsafe"
-
-	"golang.org/x/sys/cpu"
 )
 
-var avx2 = cpu.X86.HasAVX2
-
 type (
-	ptr  = unsafe.Pointer
-	pptr = *unsafe.Pointer
-	ui   = uintptr
+	ptr = unsafe.Pointer
+	ui  = uintptr
 )
 
 const (
 	_stripe = 64
 	_block  = 1024
+
+	prime32_1 = 2654435761
 
 	prime64_1 = 11400714785074694791
 	prime64_2 = 14029467366897019727
@@ -63,27 +60,28 @@ func hashSmall(s string) uint64 {
 	p, l := *(*ptr)(ptr(&s)), uint64(len(s))
 
 	if l > 8 {
-		acc := prime64_1 * l
-		l1 := *(*uint64)(p) + *(*uint64)(key)
-		l2 := *(*uint64)(ptr(ui(p) + ui(l) - 8)) + *(*uint64)(ptr(ui(key) + 8))
-		hi, lo := bits.Mul64(l1, l2)
-		acc += hi + lo
+		ll1 := *(*uint64)(p) ^ *(*uint64)(key)
+		ll2 := *(*uint64)(ptr(ui(p) + ui(l) - 8)) ^ *(*uint64)(ptr(ui(key) + 8))
+		hi, lo := bits.Mul64(ll1, ll2)
+		acc := l + ll1 + ll2 + (hi ^ lo)
 
-		acc ^= acc >> 29
+		acc ^= acc >> 37
 		acc *= prime64_3
 		acc ^= acc >> 32
 		return acc
 
 	} else if l >= 4 {
-		acc := prime64_1 * l
-		l1 := *(*uint32)(p) + *(*uint32)(key)
-		l2 := *(*uint32)(ptr(ui(p) + ui(l) - 4)) + *(*uint32)(ptr(ui(key) + 4))
-		acc += uint64(l1) * uint64(l2)
+		in1 := *(*uint32)(p)
+		in2 := *(*uint32)(ptr(ui(p) + ui(l) - 4))
+		in64 := uint64(in1) + uint64(in2)<<32
+		keyed := in64 ^ *(*uint64)(key)
+		hi, lo := bits.Mul64(keyed, prime64_1)
+		mix64 := l + hi ^ lo
 
-		acc ^= acc >> 29
-		acc *= prime64_3
-		acc ^= acc >> 32
-		return acc
+		mix64 ^= mix64 >> 37
+		mix64 *= prime64_3
+		mix64 ^= mix64 >> 32
+		return mix64
 
 	} else if l > 0 {
 		c1 := *(*uint8)(p)
@@ -95,11 +93,10 @@ func hashSmall(s string) uint64 {
 		m2 := uint64(l2 + *(*uint32)(ptr(ui(key) + 4)))
 		acc := m1 * m2
 
-		acc ^= acc >> 29
+		acc ^= acc >> 37
 		acc *= prime64_3
 		acc ^= acc >> 32
 		return acc
-
 	}
 
 	return 0
@@ -120,59 +117,59 @@ func hashMed(s string) uint64 {
 					*(*uint64)(ptr(ui(p) + 48))^*(*uint64)(ptr(ui(key) + 96)),
 					*(*uint64)(ptr(ui(p) + 48 + 8))^*(*uint64)(ptr(ui(key) + 96 + 8)),
 				)
-				acc += hi1 + lo1
+				acc += hi1 ^ lo1
 
 				hi2, lo2 := bits.Mul64(
 					*(*uint64)(ptr(ui(p) + ui(l) - 64))^*(*uint64)(ptr(ui(key) + 112)),
 					*(*uint64)(ptr(ui(p) + ui(l) - 64 + 8))^*(*uint64)(ptr(ui(key) + 112 + 8)),
 				)
-				acc += hi2 + lo2
+				acc += hi2 ^ lo2
 			}
 			hi1, lo1 := bits.Mul64(
 				*(*uint64)(ptr(ui(p) + 32))^*(*uint64)(ptr(ui(key) + 64)),
 				*(*uint64)(ptr(ui(p) + 32 + 8))^*(*uint64)(ptr(ui(key) + 64 + 8)),
 			)
-			acc += hi1 + lo1
+			acc += hi1 ^ lo1
 
 			hi2, lo2 := bits.Mul64(
 				*(*uint64)(ptr(ui(p) + ui(l) - 48))^*(*uint64)(ptr(ui(key) + 80)),
 				*(*uint64)(ptr(ui(p) + ui(l) - 48 + 8))^*(*uint64)(ptr(ui(key) + 80 + 8)),
 			)
-			acc += hi2 + lo2
+			acc += hi2 ^ lo2
 		}
 		hi1, lo1 := bits.Mul64(
 			*(*uint64)(ptr(ui(p) + 16))^*(*uint64)(ptr(ui(key) + 32)),
 			*(*uint64)(ptr(ui(p) + 16 + 8))^*(*uint64)(ptr(ui(key) + 32 + 8)),
 		)
-		acc += hi1 + lo1
+		acc += hi1 ^ lo1
 
 		hi2, lo2 := bits.Mul64(
 			*(*uint64)(ptr(ui(p) + ui(l) - 32))^*(*uint64)(ptr(ui(key) + 48)),
 			*(*uint64)(ptr(ui(p) + ui(l) - 32 + 8))^*(*uint64)(ptr(ui(key) + 48 + 8)),
 		)
-		acc += hi2 + lo2
+		acc += hi2 ^ lo2
 	}
 	hi1, lo1 := bits.Mul64(
 		*(*uint64)(ptr(ui(p) + 0))^*(*uint64)(ptr(ui(key) + 0)),
 		*(*uint64)(ptr(ui(p) + 0 + 8))^*(*uint64)(ptr(ui(key) + 0 + 8)),
 	)
-	acc += hi1 + lo1
+	acc += hi1 ^ lo1
 
 	hi2, lo2 := bits.Mul64(
 		*(*uint64)(ptr(ui(p) + ui(l) - 16))^*(*uint64)(ptr(ui(key) + 16)),
 		*(*uint64)(ptr(ui(p) + ui(l) - 16 + 8))^*(*uint64)(ptr(ui(key) + 16 + 8)),
 	)
-	acc += hi2 + lo2
+	acc += hi2 ^ lo2
 
-	acc ^= acc >> 29
+	acc ^= acc >> 37
 	acc *= prime64_3
 	acc ^= acc >> 32
 	return acc
 }
 
 func hashLarge(p ptr, l uint64) uint64 {
-	if avx2 {
-		return hashLargeAVX2(p, l)
+	if avx2 || sse2 {
+		return hashVector(p, l)
 	}
 
 	ol := l
@@ -183,57 +180,73 @@ func hashLarge(p ptr, l uint64) uint64 {
 
 		// acc
 		for i := 0; i < 16; i++ {
-			l0, r0 := *(*uint32)(ptr(ui(p) + 0)), *(*uint32)(ptr(ui(p) + 4))
-			acc[0] += uint64(l0+*(*uint32)(ptr(ui(k) + 0)))*uint64(r0+*(*uint32)(ptr(ui(k) + 4))) + uint64(l0) + (uint64(r0) << 32)
+			dl0, dr0 := *(*uint32)(ptr(ui(p) + 0)), *(*uint32)(ptr(ui(p) + 4))
+			kl0, kr0 := *(*uint32)(ptr(ui(k) + 0)), *(*uint32)(ptr(ui(k) + 4))
+			acc[0] += uint64(dl0^kl0)*uint64(dr0^kr0) + uint64(dl0) + uint64(dr0)<<32
 
-			l1, r1 := *(*uint32)(ptr(ui(p) + 8)), *(*uint32)(ptr(ui(p) + 12))
-			acc[1] += uint64(l1+*(*uint32)(ptr(ui(k) + 8)))*uint64(r1+*(*uint32)(ptr(ui(k) + 12))) + uint64(l1) + (uint64(r1) << 32)
+			dl1, dr1 := *(*uint32)(ptr(ui(p) + 8)), *(*uint32)(ptr(ui(p) + 12))
+			kl1, kr1 := *(*uint32)(ptr(ui(k) + 8)), *(*uint32)(ptr(ui(k) + 12))
+			acc[1] += uint64(dl1^kl1)*uint64(dr1^kr1) + uint64(dl1) + uint64(dr1)<<32
 
-			l2, r2 := *(*uint32)(ptr(ui(p) + 16)), *(*uint32)(ptr(ui(p) + 20))
-			acc[2] += uint64(l2+*(*uint32)(ptr(ui(k) + 16)))*uint64(r2+*(*uint32)(ptr(ui(k) + 20))) + uint64(l2) + (uint64(r2) << 32)
+			dl2, dr2 := *(*uint32)(ptr(ui(p) + 16)), *(*uint32)(ptr(ui(p) + 20))
+			kl2, kr2 := *(*uint32)(ptr(ui(k) + 16)), *(*uint32)(ptr(ui(k) + 20))
+			acc[2] += uint64(dl2^kl2)*uint64(dr2^kr2) + uint64(dl2) + uint64(dr2)<<32
 
-			l3, r3 := *(*uint32)(ptr(ui(p) + 24)), *(*uint32)(ptr(ui(p) + 28))
-			acc[3] += uint64(l3+*(*uint32)(ptr(ui(k) + 24)))*uint64(r3+*(*uint32)(ptr(ui(k) + 28))) + uint64(l3) + (uint64(r3) << 32)
+			dl3, dr3 := *(*uint32)(ptr(ui(p) + 24)), *(*uint32)(ptr(ui(p) + 28))
+			kl3, kr3 := *(*uint32)(ptr(ui(k) + 24)), *(*uint32)(ptr(ui(k) + 28))
+			acc[3] += uint64(dl3^kl3)*uint64(dr3^kr3) + uint64(dl3) + uint64(dr3)<<32
 
-			l4, r4 := *(*uint32)(ptr(ui(p) + 32)), *(*uint32)(ptr(ui(p) + 36))
-			acc[4] += uint64(l4+*(*uint32)(ptr(ui(k) + 32)))*uint64(r4+*(*uint32)(ptr(ui(k) + 36))) + uint64(l4) + (uint64(r4) << 32)
+			dl4, dr4 := *(*uint32)(ptr(ui(p) + 32)), *(*uint32)(ptr(ui(p) + 36))
+			kl4, kr4 := *(*uint32)(ptr(ui(k) + 32)), *(*uint32)(ptr(ui(k) + 36))
+			acc[4] += uint64(dl4^kl4)*uint64(dr4^kr4) + uint64(dl4) + uint64(dr4)<<32
 
-			l5, r5 := *(*uint32)(ptr(ui(p) + 40)), *(*uint32)(ptr(ui(p) + 44))
-			acc[5] += uint64(l5+*(*uint32)(ptr(ui(k) + 40)))*uint64(r5+*(*uint32)(ptr(ui(k) + 44))) + uint64(l5) + (uint64(r5) << 32)
+			dl5, dr5 := *(*uint32)(ptr(ui(p) + 40)), *(*uint32)(ptr(ui(p) + 44))
+			kl5, kr5 := *(*uint32)(ptr(ui(k) + 40)), *(*uint32)(ptr(ui(k) + 44))
+			acc[5] += uint64(dl5^kl5)*uint64(dr5^kr5) + uint64(dl5) + uint64(dr5)<<32
 
-			l6, r6 := *(*uint32)(ptr(ui(p) + 48)), *(*uint32)(ptr(ui(p) + 52))
-			acc[6] += uint64(l6+*(*uint32)(ptr(ui(k) + 48)))*uint64(r6+*(*uint32)(ptr(ui(k) + 52))) + uint64(l6) + (uint64(r6) << 32)
+			dl6, dr6 := *(*uint32)(ptr(ui(p) + 48)), *(*uint32)(ptr(ui(p) + 52))
+			kl6, kr6 := *(*uint32)(ptr(ui(k) + 48)), *(*uint32)(ptr(ui(k) + 52))
+			acc[6] += uint64(dl6^kl6)*uint64(dr6^kr6) + uint64(dl6) + uint64(dr6)<<32
 
-			l7, r7 := *(*uint32)(ptr(ui(p) + 56)), *(*uint32)(ptr(ui(p) + 60))
-			acc[7] += uint64(l7+*(*uint32)(ptr(ui(k) + 56)))*uint64(r7+*(*uint32)(ptr(ui(k) + 60))) + uint64(l7) + (uint64(r7) << 32)
+			dl7, dr7 := *(*uint32)(ptr(ui(p) + 56)), *(*uint32)(ptr(ui(p) + 60))
+			kl7, kr7 := *(*uint32)(ptr(ui(k) + 56)), *(*uint32)(ptr(ui(k) + 60))
+			acc[7] += uint64(dl7^kl7)*uint64(dr7^kr7) + uint64(dl7) + uint64(dr7)<<32
 
 			p, k = ptr(ui(p)+_stripe), ptr(ui(k)+8)
 		}
 
 		// scramble acc
 		acc[0] ^= acc[0] >> 47
-		acc[0] = (uint64(uint32(acc[0])) * uint64(*(*uint32)(ptr(ui(k) + 0)))) ^ ((acc[0] >> 32) * uint64(*(*uint32)(ptr(ui(k) + 4))))
+		acc[0] ^= *(*uint64)(ptr(ui(k) + 0*8))
+		acc[0] *= prime32_1
 
 		acc[1] ^= acc[1] >> 47
-		acc[1] = (uint64(uint32(acc[1])) * uint64(*(*uint32)(ptr(ui(k) + 8)))) ^ ((acc[1] >> 32) * uint64(*(*uint32)(ptr(ui(k) + 12))))
+		acc[1] ^= *(*uint64)(ptr(ui(k) + 1*8))
+		acc[1] *= prime32_1
 
 		acc[2] ^= acc[2] >> 47
-		acc[2] = (uint64(uint32(acc[2])) * uint64(*(*uint32)(ptr(ui(k) + 16)))) ^ ((acc[2] >> 32) * uint64(*(*uint32)(ptr(ui(k) + 20))))
+		acc[2] ^= *(*uint64)(ptr(ui(k) + 2*8))
+		acc[2] *= prime32_1
 
 		acc[3] ^= acc[3] >> 47
-		acc[3] = (uint64(uint32(acc[3])) * uint64(*(*uint32)(ptr(ui(k) + 24)))) ^ ((acc[3] >> 32) * uint64(*(*uint32)(ptr(ui(k) + 28))))
+		acc[3] ^= *(*uint64)(ptr(ui(k) + 3*8))
+		acc[3] *= prime32_1
 
 		acc[4] ^= acc[4] >> 47
-		acc[4] = (uint64(uint32(acc[4])) * uint64(*(*uint32)(ptr(ui(k) + 32)))) ^ ((acc[4] >> 32) * uint64(*(*uint32)(ptr(ui(k) + 36))))
+		acc[4] ^= *(*uint64)(ptr(ui(k) + 4*8))
+		acc[4] *= prime32_1
 
 		acc[5] ^= acc[5] >> 47
-		acc[5] = (uint64(uint32(acc[5])) * uint64(*(*uint32)(ptr(ui(k) + 40)))) ^ ((acc[5] >> 32) * uint64(*(*uint32)(ptr(ui(k) + 44))))
+		acc[5] ^= *(*uint64)(ptr(ui(k) + 5*8))
+		acc[5] *= prime32_1
 
 		acc[6] ^= acc[6] >> 47
-		acc[6] = (uint64(uint32(acc[6])) * uint64(*(*uint32)(ptr(ui(k) + 48)))) ^ ((acc[6] >> 32) * uint64(*(*uint32)(ptr(ui(k) + 52))))
+		acc[6] ^= *(*uint64)(ptr(ui(k) + 6*8))
+		acc[6] *= prime32_1
 
 		acc[7] ^= acc[7] >> 47
-		acc[7] = (uint64(uint32(acc[7])) * uint64(*(*uint32)(ptr(ui(k) + 56)))) ^ ((acc[7] >> 32) * uint64(*(*uint32)(ptr(ui(k) + 60))))
+		acc[7] ^= *(*uint64)(ptr(ui(k) + 7*8))
+		acc[7] *= prime32_1
 
 		l -= 16 * _stripe
 	}
@@ -241,29 +254,37 @@ func hashLarge(p ptr, l uint64) uint64 {
 	if l > 0 {
 		t, k := (l%_block)/_stripe, key
 		for i := uint64(0); i < t; i++ {
-			l0, r0 := *(*uint32)(ptr(ui(p) + 0)), *(*uint32)(ptr(ui(p) + 4))
-			acc[0] += uint64(l0+*(*uint32)(ptr(ui(k) + 0)))*uint64(r0+*(*uint32)(ptr(ui(k) + 4))) + uint64(l0) + (uint64(r0) << 32)
+			dl0, dr0 := *(*uint32)(ptr(ui(p) + 0)), *(*uint32)(ptr(ui(p) + 4))
+			kl0, kr0 := *(*uint32)(ptr(ui(k) + 0)), *(*uint32)(ptr(ui(k) + 4))
+			acc[0] += uint64(dl0^kl0)*uint64(dr0^kr0) + uint64(dl0) + uint64(dr0)<<32
 
-			l1, r1 := *(*uint32)(ptr(ui(p) + 8)), *(*uint32)(ptr(ui(p) + 12))
-			acc[1] += uint64(l1+*(*uint32)(ptr(ui(k) + 8)))*uint64(r1+*(*uint32)(ptr(ui(k) + 12))) + uint64(l1) + (uint64(r1) << 32)
+			dl1, dr1 := *(*uint32)(ptr(ui(p) + 8)), *(*uint32)(ptr(ui(p) + 12))
+			kl1, kr1 := *(*uint32)(ptr(ui(k) + 8)), *(*uint32)(ptr(ui(k) + 12))
+			acc[1] += uint64(dl1^kl1)*uint64(dr1^kr1) + uint64(dl1) + uint64(dr1)<<32
 
-			l2, r2 := *(*uint32)(ptr(ui(p) + 16)), *(*uint32)(ptr(ui(p) + 20))
-			acc[2] += uint64(l2+*(*uint32)(ptr(ui(k) + 16)))*uint64(r2+*(*uint32)(ptr(ui(k) + 20))) + uint64(l2) + (uint64(r2) << 32)
+			dl2, dr2 := *(*uint32)(ptr(ui(p) + 16)), *(*uint32)(ptr(ui(p) + 20))
+			kl2, kr2 := *(*uint32)(ptr(ui(k) + 16)), *(*uint32)(ptr(ui(k) + 20))
+			acc[2] += uint64(dl2^kl2)*uint64(dr2^kr2) + uint64(dl2) + uint64(dr2)<<32
 
-			l3, r3 := *(*uint32)(ptr(ui(p) + 24)), *(*uint32)(ptr(ui(p) + 28))
-			acc[3] += uint64(l3+*(*uint32)(ptr(ui(k) + 24)))*uint64(r3+*(*uint32)(ptr(ui(k) + 28))) + uint64(l3) + (uint64(r3) << 32)
+			dl3, dr3 := *(*uint32)(ptr(ui(p) + 24)), *(*uint32)(ptr(ui(p) + 28))
+			kl3, kr3 := *(*uint32)(ptr(ui(k) + 24)), *(*uint32)(ptr(ui(k) + 28))
+			acc[3] += uint64(dl3^kl3)*uint64(dr3^kr3) + uint64(dl3) + uint64(dr3)<<32
 
-			l4, r4 := *(*uint32)(ptr(ui(p) + 32)), *(*uint32)(ptr(ui(p) + 36))
-			acc[4] += uint64(l4+*(*uint32)(ptr(ui(k) + 32)))*uint64(r4+*(*uint32)(ptr(ui(k) + 36))) + uint64(l4) + (uint64(r4) << 32)
+			dl4, dr4 := *(*uint32)(ptr(ui(p) + 32)), *(*uint32)(ptr(ui(p) + 36))
+			kl4, kr4 := *(*uint32)(ptr(ui(k) + 32)), *(*uint32)(ptr(ui(k) + 36))
+			acc[4] += uint64(dl4^kl4)*uint64(dr4^kr4) + uint64(dl4) + uint64(dr4)<<32
 
-			l5, r5 := *(*uint32)(ptr(ui(p) + 40)), *(*uint32)(ptr(ui(p) + 44))
-			acc[5] += uint64(l5+*(*uint32)(ptr(ui(k) + 40)))*uint64(r5+*(*uint32)(ptr(ui(k) + 44))) + uint64(l5) + (uint64(r5) << 32)
+			dl5, dr5 := *(*uint32)(ptr(ui(p) + 40)), *(*uint32)(ptr(ui(p) + 44))
+			kl5, kr5 := *(*uint32)(ptr(ui(k) + 40)), *(*uint32)(ptr(ui(k) + 44))
+			acc[5] += uint64(dl5^kl5)*uint64(dr5^kr5) + uint64(dl5) + uint64(dr5)<<32
 
-			l6, r6 := *(*uint32)(ptr(ui(p) + 48)), *(*uint32)(ptr(ui(p) + 52))
-			acc[6] += uint64(l6+*(*uint32)(ptr(ui(k) + 48)))*uint64(r6+*(*uint32)(ptr(ui(k) + 52))) + uint64(l6) + (uint64(r6) << 32)
+			dl6, dr6 := *(*uint32)(ptr(ui(p) + 48)), *(*uint32)(ptr(ui(p) + 52))
+			kl6, kr6 := *(*uint32)(ptr(ui(k) + 48)), *(*uint32)(ptr(ui(k) + 52))
+			acc[6] += uint64(dl6^kl6)*uint64(dr6^kr6) + uint64(dl6) + uint64(dr6)<<32
 
-			l7, r7 := *(*uint32)(ptr(ui(p) + 56)), *(*uint32)(ptr(ui(p) + 60))
-			acc[7] += uint64(l7+*(*uint32)(ptr(ui(k) + 56)))*uint64(r7+*(*uint32)(ptr(ui(k) + 60))) + uint64(l7) + (uint64(r7) << 32)
+			dl7, dr7 := *(*uint32)(ptr(ui(p) + 56)), *(*uint32)(ptr(ui(p) + 60))
+			kl7, kr7 := *(*uint32)(ptr(ui(k) + 56)), *(*uint32)(ptr(ui(k) + 60))
+			acc[7] += uint64(dl7^kl7)*uint64(dr7^kr7) + uint64(dl7) + uint64(dr7)<<32
 
 			p, k, l = ptr(ui(p)+_stripe), ptr(ui(k)+8), l-_stripe
 		}
@@ -271,60 +292,52 @@ func hashLarge(p ptr, l uint64) uint64 {
 		if l > 0 {
 			p = ptr(ui(p) - uintptr(_stripe-l))
 
-			l0, r0 := *(*uint32)(ptr(ui(p) + 0)), *(*uint32)(ptr(ui(p) + 4))
-			acc[0] += uint64(l0+*(*uint32)(ptr(ui(k) + 0)))*uint64(r0+*(*uint32)(ptr(ui(k) + 4))) + uint64(l0) + (uint64(r0) << 32)
+			dl0, dr0 := *(*uint32)(ptr(ui(p) + 0)), *(*uint32)(ptr(ui(p) + 4))
+			kl0, kr0 := *(*uint32)(ptr(ui(k) + 0)), *(*uint32)(ptr(ui(k) + 4))
+			acc[0] += uint64(dl0^kl0)*uint64(dr0^kr0) + uint64(dl0) + uint64(dr0)<<32
 
-			l1, r1 := *(*uint32)(ptr(ui(p) + 8)), *(*uint32)(ptr(ui(p) + 12))
-			acc[1] += uint64(l1+*(*uint32)(ptr(ui(k) + 8)))*uint64(r1+*(*uint32)(ptr(ui(k) + 12))) + uint64(l1) + (uint64(r1) << 32)
+			dl1, dr1 := *(*uint32)(ptr(ui(p) + 8)), *(*uint32)(ptr(ui(p) + 12))
+			kl1, kr1 := *(*uint32)(ptr(ui(k) + 8)), *(*uint32)(ptr(ui(k) + 12))
+			acc[1] += uint64(dl1^kl1)*uint64(dr1^kr1) + uint64(dl1) + uint64(dr1)<<32
 
-			l2, r2 := *(*uint32)(ptr(ui(p) + 16)), *(*uint32)(ptr(ui(p) + 20))
-			acc[2] += uint64(l2+*(*uint32)(ptr(ui(k) + 16)))*uint64(r2+*(*uint32)(ptr(ui(k) + 20))) + uint64(l2) + (uint64(r2) << 32)
+			dl2, dr2 := *(*uint32)(ptr(ui(p) + 16)), *(*uint32)(ptr(ui(p) + 20))
+			kl2, kr2 := *(*uint32)(ptr(ui(k) + 16)), *(*uint32)(ptr(ui(k) + 20))
+			acc[2] += uint64(dl2^kl2)*uint64(dr2^kr2) + uint64(dl2) + uint64(dr2)<<32
 
-			l3, r3 := *(*uint32)(ptr(ui(p) + 24)), *(*uint32)(ptr(ui(p) + 28))
-			acc[3] += uint64(l3+*(*uint32)(ptr(ui(k) + 24)))*uint64(r3+*(*uint32)(ptr(ui(k) + 28))) + uint64(l3) + (uint64(r3) << 32)
+			dl3, dr3 := *(*uint32)(ptr(ui(p) + 24)), *(*uint32)(ptr(ui(p) + 28))
+			kl3, kr3 := *(*uint32)(ptr(ui(k) + 24)), *(*uint32)(ptr(ui(k) + 28))
+			acc[3] += uint64(dl3^kl3)*uint64(dr3^kr3) + uint64(dl3) + uint64(dr3)<<32
 
-			l4, r4 := *(*uint32)(ptr(ui(p) + 32)), *(*uint32)(ptr(ui(p) + 36))
-			acc[4] += uint64(l4+*(*uint32)(ptr(ui(k) + 32)))*uint64(r4+*(*uint32)(ptr(ui(k) + 36))) + uint64(l4) + (uint64(r4) << 32)
+			dl4, dr4 := *(*uint32)(ptr(ui(p) + 32)), *(*uint32)(ptr(ui(p) + 36))
+			kl4, kr4 := *(*uint32)(ptr(ui(k) + 32)), *(*uint32)(ptr(ui(k) + 36))
+			acc[4] += uint64(dl4^kl4)*uint64(dr4^kr4) + uint64(dl4) + uint64(dr4)<<32
 
-			l5, r5 := *(*uint32)(ptr(ui(p) + 40)), *(*uint32)(ptr(ui(p) + 44))
-			acc[5] += uint64(l5+*(*uint32)(ptr(ui(k) + 40)))*uint64(r5+*(*uint32)(ptr(ui(k) + 44))) + uint64(l5) + (uint64(r5) << 32)
+			dl5, dr5 := *(*uint32)(ptr(ui(p) + 40)), *(*uint32)(ptr(ui(p) + 44))
+			kl5, kr5 := *(*uint32)(ptr(ui(k) + 40)), *(*uint32)(ptr(ui(k) + 44))
+			acc[5] += uint64(dl5^kl5)*uint64(dr5^kr5) + uint64(dl5) + uint64(dr5)<<32
 
-			l6, r6 := *(*uint32)(ptr(ui(p) + 48)), *(*uint32)(ptr(ui(p) + 52))
-			acc[6] += uint64(l6+*(*uint32)(ptr(ui(k) + 48)))*uint64(r6+*(*uint32)(ptr(ui(k) + 52))) + uint64(l6) + (uint64(r6) << 32)
+			dl6, dr6 := *(*uint32)(ptr(ui(p) + 48)), *(*uint32)(ptr(ui(p) + 52))
+			kl6, kr6 := *(*uint32)(ptr(ui(k) + 48)), *(*uint32)(ptr(ui(k) + 52))
+			acc[6] += uint64(dl6^kl6)*uint64(dr6^kr6) + uint64(dl6) + uint64(dr6)<<32
 
-			l7, r7 := *(*uint32)(ptr(ui(p) + 56)), *(*uint32)(ptr(ui(p) + 60))
-			acc[7] += uint64(l7+*(*uint32)(ptr(ui(k) + 56)))*uint64(r7+*(*uint32)(ptr(ui(k) + 60))) + uint64(l7) + (uint64(r7) << 32)
+			dl7, dr7 := *(*uint32)(ptr(ui(p) + 56)), *(*uint32)(ptr(ui(p) + 60))
+			kl7, kr7 := *(*uint32)(ptr(ui(k) + 56)), *(*uint32)(ptr(ui(k) + 60))
+			acc[7] += uint64(dl7^kl7)*uint64(dr7^kr7) + uint64(dl7) + uint64(dr7)<<32
 		}
 	}
 
 	// merge_accs
-	hi1, lo1 := bits.Mul64(acc[0]^*(*uint64)(ptr(ui(key) + 0)), acc[1]^*(*uint64)(ptr(ui(key) + 8)))
-	hi2, lo2 := bits.Mul64(acc[2]^*(*uint64)(ptr(ui(key) + 16)), acc[3]^*(*uint64)(ptr(ui(key) + 24)))
-	hi3, lo3 := bits.Mul64(acc[4]^*(*uint64)(ptr(ui(key) + 32)), acc[5]^*(*uint64)(ptr(ui(key) + 40)))
-	hi4, lo4 := bits.Mul64(acc[6]^*(*uint64)(ptr(ui(key) + 48)), acc[7]^*(*uint64)(ptr(ui(key) + 56)))
-	result := ol*prime64_1 + hi1 + lo1 + hi2 + lo2 + hi3 + lo3 + hi4 + lo4
+	result := ol * prime64_1
+	hi1, lo1 := bits.Mul64(acc[0]^*(*uint64)(ptr(ui(key) + 0*8)), acc[1]^*(*uint64)(ptr(ui(key) + 1*8)))
+	result += hi1 ^ lo1
+	hi2, lo2 := bits.Mul64(acc[2]^*(*uint64)(ptr(ui(key) + 2*8)), acc[3]^*(*uint64)(ptr(ui(key) + 3*8)))
+	result += hi2 ^ lo2
+	hi3, lo3 := bits.Mul64(acc[4]^*(*uint64)(ptr(ui(key) + 4*8)), acc[5]^*(*uint64)(ptr(ui(key) + 5*8)))
+	result += hi3 ^ lo3
+	hi4, lo4 := bits.Mul64(acc[6]^*(*uint64)(ptr(ui(key) + 6*8)), acc[7]^*(*uint64)(ptr(ui(key) + 7*8)))
+	result += hi4 ^ lo4
 
-	result ^= result >> 29
-	result *= prime64_3
-	result ^= result >> 32
-	return result
-}
-
-//go:noescape
-func accum(acc *[8]uint64, data, key unsafe.Pointer, len uint64)
-
-func hashLargeAVX2(p ptr, l uint64) uint64 {
-	acc := [8]uint64{0, prime64_1, prime64_2, prime64_3, prime64_4, prime64_5, 0, 0}
-	accum(&acc, p, key, l)
-
-	// merge_accs
-	hi1, lo1 := bits.Mul64(acc[0]^*(*uint64)(ptr(ui(key) + 0)), acc[1]^*(*uint64)(ptr(ui(key) + 8)))
-	hi2, lo2 := bits.Mul64(acc[2]^*(*uint64)(ptr(ui(key) + 16)), acc[3]^*(*uint64)(ptr(ui(key) + 24)))
-	hi3, lo3 := bits.Mul64(acc[4]^*(*uint64)(ptr(ui(key) + 32)), acc[5]^*(*uint64)(ptr(ui(key) + 40)))
-	hi4, lo4 := bits.Mul64(acc[6]^*(*uint64)(ptr(ui(key) + 48)), acc[7]^*(*uint64)(ptr(ui(key) + 56)))
-	result := l*prime64_1 + hi1 + lo1 + hi2 + lo2 + hi3 + lo3 + hi4 + lo4
-
-	result ^= result >> 29
+	result ^= result >> 37
 	result *= prime64_3
 	result ^= result >> 32
 	return result
