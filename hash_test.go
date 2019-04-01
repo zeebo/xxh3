@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func Benchmark(b *testing.B) {
+func BenchmarkFixed(b *testing.B) {
 	r := func(i int) {
 		b.Run(fmt.Sprintf("%d", i), func(b *testing.B) {
 			b.SetBytes(int64(i))
