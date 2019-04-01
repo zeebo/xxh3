@@ -76,12 +76,12 @@ func hashSmall(s string) uint64 {
 		in64 := uint64(in1) + uint64(in2)<<32
 		keyed := in64 ^ *(*uint64)(key)
 		hi, lo := bits.Mul64(keyed, prime64_1)
-		mix64 := l + hi ^ lo
+		acc := l + hi ^ lo
 
-		mix64 ^= mix64 >> 37
-		mix64 *= prime64_3
-		mix64 ^= mix64 >> 32
-		return mix64
+		acc ^= acc >> 37
+		acc *= prime64_3
+		acc ^= acc >> 32
+		return acc
 
 	} else if l > 0 {
 		c1 := *(*uint8)(p)

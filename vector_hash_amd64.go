@@ -21,7 +21,7 @@ func accum_sse(acc *[8]uint64, data, key unsafe.Pointer, len uint64)
 func hashVector(p ptr, l uint64) uint64 {
 	acc := [8]uint64{0, prime64_1, prime64_2, prime64_3, prime64_4, prime64_5, 0, 0}
 
-	if avx2 && false {
+	if avx2 {
 		accum_avx(&acc, p, key, l)
 	} else {
 		accum_sse(&acc, p, key, l)

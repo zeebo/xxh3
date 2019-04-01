@@ -1,1 +1,3 @@
 upstream
+*.pprof
+xxh3.test
