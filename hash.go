@@ -48,7 +48,7 @@ var key = ptr(&[...]u8{
 func HashString(s string) uint64 {
 	fn := hash
 	if len(s) > 240 {
-		fn = hashLarge
+		fn = hash_large
 	}
 	return fn(s)
 }
@@ -57,7 +57,7 @@ func HashString(s string) uint64 {
 func Hash(b []byte) uint64 {
 	fn := hash
 	if len(b) > 240 {
-		fn = hashLarge
+		fn = hash_large
 	}
 	return fn(*(*string)(ptr(&b)))
 }
@@ -93,15 +93,17 @@ func hash(s string) (acc u64) {
 		acc *= prime64_3
 		acc ^= acc >> 32
 
-		// trailing groups
+		// trailing groups after 128
 		top := ui(l) &^ 15
 		for i := ui(8 * 16); i < top; i += 16 {
-			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + i))^*(*u64)(ptr(ui(key) + i - 125)), *(*u64)(ptr(ui(p) + i + 8))^*(*u64)(ptr(ui(key) + i - 117)))
+			hi, lo = bits.Mul64(
+				*(*u64)(ptr(ui(p) + i + 0))^*(*u64)(ptr(ui(key) + i - 125)),
+				*(*u64)(ptr(ui(p) + i + 8))^*(*u64)(ptr(ui(key) + i - 117)))
 			acc += hi ^ lo
 		}
 
-		// last bytes
-		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + ui(l) - 16))^*(*u64)(ptr(ui(key) + 127)), *(*u64)(ptr(ui(p) + ui(l) - 8))^*(*u64)(ptr(ui(key) + 135)))
+		// last 16 bytes
+		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + ui(l) - 16))^0xebd33483acc5ea64, *(*u64)(ptr(ui(p) + ui(l) - 8))^0x6313faffa081c5c3)
 		acc += hi ^ lo
 
 		// avalanche
@@ -117,29 +119,29 @@ func hash(s string) (acc u64) {
 		acc = l * prime64_1
 
 		if l > 96 {
-			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 48))^0x3f349ce33f76faa8, *(*u64)(ptr(ui(p) + 48 + 8))^0x1d4f0bc7c7bbdcf9)
+			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 6*8))^0x3f349ce33f76faa8, *(*u64)(ptr(ui(p) + 7*8))^0x1d4f0bc7c7bbdcf9)
 			acc += hi ^ lo
-			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + ui(l) - 64))^0x3159b4cd4be0518a, *(*u64)(ptr(ui(p) + ui(l) - 64 + 8))^0x647378d9c97e9fc8)
+			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + ui(l) - 8*8))^0x3159b4cd4be0518a, *(*u64)(ptr(ui(p) + ui(l) - 7*8))^0x647378d9c97e9fc8)
 			acc += hi ^ lo
 		}
 
 		if l > 64 {
-			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 32))^0xcb00c391bb52283c, *(*u64)(ptr(ui(p) + 32 + 8))^0xa32e531b8b65d088)
+			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 4*8))^0xcb00c391bb52283c, *(*u64)(ptr(ui(p) + 5*8))^0xa32e531b8b65d088)
 			acc += hi ^ lo
-			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + ui(l) - 48))^0x4ef90da297486471, *(*u64)(ptr(ui(p) + ui(l) - 48 + 8))^0xd8acdea946ef1938)
+			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + ui(l) - 6*8))^0x4ef90da297486471, *(*u64)(ptr(ui(p) + ui(l) - 5*8))^0xd8acdea946ef1938)
 			acc += hi ^ lo
 		}
 
 		if l > 32 {
-			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 16))^0x78e5c0cc4ee679cb, *(*u64)(ptr(ui(p) + 16 + 8))^0x2172ffcc7dd05a82)
+			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 2*8))^0x78e5c0cc4ee679cb, *(*u64)(ptr(ui(p) + 3*8))^0x2172ffcc7dd05a82)
 			acc += hi ^ lo
-			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + ui(l) - 32))^0x8e2443f7744608b8, *(*u64)(ptr(ui(p) + ui(l) - 32 + 8))^0x4c263a81e69035e0)
+			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + ui(l) - 4*8))^0x8e2443f7744608b8, *(*u64)(ptr(ui(p) + ui(l) - 3*8))^0x4c263a81e69035e0)
 			acc += hi ^ lo
 		}
 
-		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 0))^0xbe4ba423396cfeb8, *(*u64)(ptr(ui(p) + 0 + 8))^0x1cad21f72c81017c)
+		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 0*8))^0xbe4ba423396cfeb8, *(*u64)(ptr(ui(p) + 1*8))^0x1cad21f72c81017c)
 		acc += hi ^ lo
-		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + ui(l) - 16))^0xdb979083e96dd4de, *(*u64)(ptr(ui(p) + ui(l) - 16 + 8))^0x1f67b3b7a4a44072)
+		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + ui(l) - 2*8))^0xdb979083e96dd4de, *(*u64)(ptr(ui(p) + ui(l) - 1*8))^0x1f67b3b7a4a44072)
 		acc += hi ^ lo
 
 		// avalanche
@@ -184,9 +186,8 @@ func hash(s string) (acc u64) {
 		c1 := *(*u8)(p)
 		c2 := *(*u8)(ptr(ui(p) + (ui(l) >> 1)))
 		c3 := *(*u8)(ptr(ui(p) + ui(l) - 1))
-		comb := u32(c1) + (u32(c2) << 8) + (u32(c3) << 16) + (u32(l) << 24)
-		keyed := u64(comb ^ 0x396cfeb8)
-		acc = keyed * prime64_1
+		c4 := u32(c1) + (u32(c2) << 8) + (u32(c3) << 16) + (u32(l) << 24)
+		acc = u64(c4^0x396cfeb8) * prime64_1
 
 		// avalanche
 		acc ^= acc >> 37
@@ -199,15 +200,14 @@ func hash(s string) (acc u64) {
 	return 0
 }
 
-// hashLarge handles lengths greater than 240.
-func hashLarge(s string) u64 {
-	p, l := *(*ptr)(ptr(&s)), u64(len(s))
-
+// hash_large handles lengths greater than 240.
+func hash_large(s string) (acc u64) {
 	if avx2 || sse2 {
-		return hashVector(p, l)
+		return hash_vector(s)
 	}
 
-	acc := l * prime64_1
+	p, l := *(*ptr)(ptr(&s)), u64(len(s))
+	acc = l * prime64_1
 	accs := [8]u64{prime32_3, prime64_1, prime64_2, prime64_3, prime64_4, prime32_2, prime64_5, prime32_1}
 
 	for l >= _block {

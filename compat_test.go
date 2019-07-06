@@ -8,10 +8,8 @@ func TestCompatWithC(t *testing.T) {
 	buf := make([]byte, 1024)
 	for i, exp := range testVecs {
 		buf[i] = byte(i)
-		if i == 241 {
-			if got := Hash(buf[:i]); got != exp {
-				t.Fatalf("% -4d: %016x != %016x", i, got, exp)
-			}
+		if got := Hash(buf[:i]); got != exp {
+			t.Fatalf("% -4d: %016x != %016x", i, got, exp)
 		}
 	}
 }

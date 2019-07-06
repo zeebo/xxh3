@@ -57,7 +57,6 @@ func BenchmarkFixed(b *testing.B) {
 	r(129)
 	r(240)
 	r(241)
-	r(256)
 	r(512)
 	r(1024)
 	r(100 * 1024)
