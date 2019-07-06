@@ -11,6 +11,9 @@ func TestCompatWithC(t *testing.T) {
 		if got := Hash(buf[:i]); got != exp {
 			t.Fatalf("% -4d: %016x != %016x", i, got, exp)
 		}
+		if got := HashString(string(buf[:i])); got != exp {
+			t.Fatalf("% -4d: %016x != %016x", i, got, exp)
+		}
 	}
 }
 
