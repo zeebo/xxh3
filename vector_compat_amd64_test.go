@@ -13,6 +13,10 @@ func TestVectorCompat(t *testing.T) {
 	check := func(b []byte) {
 		t.Helper()
 
+		for i := range b {
+			b[i] = byte(i)
+		}
+
 		avx2Orig, sse2Orig, cleanup := override()
 		defer cleanup()
 
@@ -30,6 +34,7 @@ func TestVectorCompat(t *testing.T) {
 			t.Errorf("avx2: %016x", avx2Sum)
 			t.Errorf("sse2: %016x", sse2Sum)
 			t.Errorf("cpu : %016x", cpuSum)
+			t.FailNow()
 		}
 	}
 
@@ -38,6 +43,7 @@ func TestVectorCompat(t *testing.T) {
 		63, 64, 65,
 		127, 128, 129,
 		191, 192, 193,
+		239, 240, 241,
 		255, 256, 257,
 		319, 320, 321,
 		383, 384, 385,

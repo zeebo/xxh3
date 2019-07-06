@@ -40,7 +40,7 @@ func main() {
 
 			MOVOU(data.Offset(doff+offset), x0)
 			MOVOU(key.Offset(koff+offset), x1)
-			PADDD(x0, x1)
+			PXOR(x0, x1)
 			PSHUFD(Imm(0xf5), x1, x2)
 			PMULULQ(x1, x2)
 			PADDQ(x0, x2)
@@ -110,6 +110,9 @@ func main() {
 
 		SUBQ(Imm(64), data.Base)
 		ADDQ(len, data.Base)
+
+		Load(Param("key"), key.Base)
+		ADDQ(U8(121), key.Base)
 
 		accum(0)
 	}

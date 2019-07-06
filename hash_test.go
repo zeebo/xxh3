@@ -1,7 +1,6 @@
 package xxh3
 
 import (
-	"bytes"
 	"fmt"
 	"runtime"
 	"testing"
@@ -9,10 +8,10 @@ import (
 
 func BenchmarkFixed(b *testing.B) {
 	r := func(i int) {
-		b.Run(fmt.Sprintf("%d", i), func(b *testing.B) {
+		bench := func(b *testing.B) {
 			b.SetBytes(int64(i))
 			var acc uint64
-			d := bytes.Repeat([]byte("x"), i)
+			d := make([]byte, i)
 			b.ReportAllocs()
 			b.ResetTimer()
 
@@ -20,7 +19,24 @@ func BenchmarkFixed(b *testing.B) {
 				acc = Hash(d)
 			}
 			runtime.KeepAlive(acc)
-		})
+		}
+
+		if i > 240 {
+			avx2Orig, sse2Orig, cleanup := override()
+			defer cleanup()
+			if avx2Orig {
+				avx2, sse2 = true, false
+				b.Run(fmt.Sprintf("%d-AVX2", i), bench)
+			}
+			if sse2Orig {
+				avx2, sse2 = false, true
+				b.Run(fmt.Sprintf("%d-SSE2", i), bench)
+			}
+
+			avx2, sse2 = false, false
+		}
+
+		b.Run(fmt.Sprintf("%d", i), bench)
 	}
 
 	r(0)
@@ -39,6 +55,8 @@ func BenchmarkFixed(b *testing.B) {
 	r(97)
 	r(128)
 	r(129)
+	r(240)
+	r(241)
 	r(256)
 	r(512)
 	r(1024)

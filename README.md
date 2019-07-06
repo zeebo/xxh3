@@ -3,9 +3,7 @@
 [![Sourcegraph](https://sourcegraph.com/github.com/zeebo/xxh3/-/badge.svg)](https://sourcegraph.com/github.com/zeebo/xxh3?badge)
 [![Go Report Card](https://goreportcard.com/badge/github.com/zeebo/xxh3)](https://goreportcard.com/report/github.com/zeebo/xxh3)
 
-This package is a port of the [xxh3](https://github.com/Cyan4973/xxHash) library to Go. 
-
-**Important note**: I have no idea if it matches the output, yet, and upstream is still iterating on the design, so don't use this in production.
+This package is a port of the [xxh3](https://github.com/Cyan4973/xxHash) library to Go.
 
 ---
 
@@ -15,23 +13,24 @@ Run on my `i7-6700K CPU @ 4.00GHz`
 
 ## Small Sizes
 
-| Bytes    | Rate                                 |
-|----------|--------------------------------------|
-|` 0 `     |` 1.92 ns/op `                        |
-|` 1-3 `   |` 3.13 ns/op (0.32 GB/s - 0.96 GB/s) `|
-|` 4-8 `   |` 3.08 ns/op (1.30 GB/s - 2.61 GB/s) `|
-|` 9-16 `  |` 3.00 ns/op (3.00 GB/s - 5.30 GB/s) `|
-|` 17-32 ` |` 3.82 ns/op (4.45 GB/s - 8.36 GB/s) `|
-|` 33-64 ` |` 5.65 ns/op (5.84 GB/s - 11.6 GB/s) `|
-|` 65-96 ` |` 7.20 ns/op (8.91 GB/s - 13.3 GB/s) `|
-|` 97-128 `|` 8.70 ns/op (11.0 GB/s - 14.7 GB/s) `|
+| Bytes     | Rate                                 |
+|-----------|--------------------------------------|
+|` 0 `      |` 2.64 ns/op `                        |
+|` 1-3 `    |` 4.11 ns/op (0.24 GB/s - 0.72 GB/s) `|
+|` 4-8 `    |` 4.65 ns/op (0.85 GB/s - 1.72 GB/s) `|
+|` 9-16 `   |` 3.89 ns/op (2.30 GB/s - 4.11 GB/s) `|
+|` 17-32 `  |` 5.27 ns/op (3.23 GB/s - 6.03 GB/s) `|
+|` 33-64 `  |` 7.02 ns/op (4.68 GB/s - 9.12 GB/s) `|
+|` 65-96 `  |` 8.64 ns/op (7.48 GB/s - 11.1 GB/s) `|
+|` 97-128 ` |` 10.5 ns/op (9.22 GB/s - 12.1 GB/s) `|
 
 ## Large Sizes
 
-| Bytes   | Rate                      | SSE2 Rate                | AVX2 Rate                |
-|---------|---------------------------|--------------------------|--------------------------|
-|` 129 `  |` 24.7 ns/op (5.22 GB/s) ` |` 16.6 ns/op (7.76 GB/s) `|` 14.8 ns/op (8.74 GB/s) `|
-|` 256 `  |` 30.9 ns/op (8.30 GB/s) ` |` 19.0 ns/op (13.4 GB/s) `|` 15.7 ns/op (16.3 GB/s) `|
-|` 512 `  |` 55.1 ns/op (9.30 GB/s) ` |` 27.5 ns/op (18.6 GB/s) `|` 19.9 ns/op (25.8 GB/s) `|
-|` 1024 ` |` 107 ns/op (9.56 GB/s) `  |` 43.4 ns/op (23.6 GB/s) `|` 29.4 ns/op (34.9 GB/s) `|
-|` 100KB `|` 10172 ns/op (10.1 GB/s) `|` 3479 ns/op (29.4 GB/s) `|` 1837 ns/op (55.7 GB/s) `|
+| Bytes   | Rate                     | SSE2 Rate                | AVX2 Rate                |
+|---------|--------------------------|--------------------------|--------------------------|
+|` 129 `  |` 11.6 ns/op (11.1 GB/s) `|                          |                          |
+|` 240 `  |` 22.1 ns/op (10.9 GB/s) `|                          |                          |
+|` 241 `  |` 26.7 ns/op (9.02 GB/s) `|` 19.8 ns/op (12.2 GB/s) `|` 16.3 ns/op (14.8 GB/s) `|
+|` 512 `  |` 44.4 ns/op (11.5 GB/s) `|` 28.5 ns/op (18.0 GB/s) `|` 21.1 ns/op (24.3 GB/s) `|
+|` 1024 ` |` 85.1 ns/op (12.0 GB/s) `|` 45.9 ns/op (22.3 GB/s) `|` 30.1 ns/op (34.0 GB/s) `|
+|` 100KB `|` 7961 ns/op (12.9 GB/s) `|` 3515 ns/op (29.1 GB/s) `|` 1856 ns/op (55.1 GB/s) `|

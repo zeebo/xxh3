@@ -36,7 +36,7 @@ func main() {
 			y0, y1, y2 := YMM(), YMM(), YMM()
 
 			VMOVDQU(data.Offset(offset+doff), y0)
-			VPADDD(key.Offset(offset+koff), y0, y1)
+			VPXOR(key.Offset(offset+koff), y0, y1)
 			VPSHUFD(Imm(245), y1, y2)
 			VPMULUDQ(y2, y1, y1)
 			VPADDQ(y0, y1, y0)
@@ -102,6 +102,9 @@ func main() {
 
 		SUBQ(Imm(64), data.Base)
 		ADDQ(len, data.Base)
+
+		Load(Param("key"), key.Base)
+		ADDQ(U8(121), key.Base)
 
 		accum(0)
 	}
