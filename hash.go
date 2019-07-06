@@ -362,8 +362,6 @@ func hashLarge(s string) u64 {
 		}
 	}
 
-	// fmt.Println(accs)
-
 	// merge accs
 	hi1, lo1 := bits.Mul64(accs[0]^0x6dd4de1cad21f72c, accs[1]^0xa44072db979083e9)
 	acc += hi1 ^ lo1
