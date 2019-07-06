@@ -71,21 +71,44 @@ func hash(s string) (acc u64) {
 		acc = l * prime64_1
 
 		// first 8 groups
-		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 8*0))^0xbe4ba423396cfeb8, *(*u64)(ptr(ui(p) + 8*1))^0x1cad21f72c81017c)
+		hi, lo = bits.Mul64(
+			*(*u64)(ptr(ui(p) + 8*0))^0xbe4ba423396cfeb8,
+			*(*u64)(ptr(ui(p) + 8*1))^0x1cad21f72c81017c)
 		acc += hi ^ lo
-		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 8*2))^0xdb979083e96dd4de, *(*u64)(ptr(ui(p) + 8*3))^0x1f67b3b7a4a44072)
+
+		hi, lo = bits.Mul64(
+			*(*u64)(ptr(ui(p) + 8*2))^0xdb979083e96dd4de,
+			*(*u64)(ptr(ui(p) + 8*3))^0x1f67b3b7a4a44072)
 		acc += hi ^ lo
-		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 8*4))^0x78e5c0cc4ee679cb, *(*u64)(ptr(ui(p) + 8*5))^0x2172ffcc7dd05a82)
+
+		hi, lo = bits.Mul64(
+			*(*u64)(ptr(ui(p) + 8*4))^0x78e5c0cc4ee679cb,
+			*(*u64)(ptr(ui(p) + 8*5))^0x2172ffcc7dd05a82)
 		acc += hi ^ lo
-		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 8*6))^0x8e2443f7744608b8, *(*u64)(ptr(ui(p) + 8*7))^0x4c263a81e69035e0)
+
+		hi, lo = bits.Mul64(
+			*(*u64)(ptr(ui(p) + 8*6))^0x8e2443f7744608b8,
+			*(*u64)(ptr(ui(p) + 8*7))^0x4c263a81e69035e0)
 		acc += hi ^ lo
-		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 8*8))^0xcb00c391bb52283c, *(*u64)(ptr(ui(p) + 8*9))^0xa32e531b8b65d088)
+
+		hi, lo = bits.Mul64(
+			*(*u64)(ptr(ui(p) + 8*8))^0xcb00c391bb52283c,
+			*(*u64)(ptr(ui(p) + 8*9))^0xa32e531b8b65d088)
 		acc += hi ^ lo
-		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 8*10))^0x4ef90da297486471, *(*u64)(ptr(ui(p) + 8*11))^0xd8acdea946ef1938)
+
+		hi, lo = bits.Mul64(
+			*(*u64)(ptr(ui(p) + 8*10))^0x4ef90da297486471,
+			*(*u64)(ptr(ui(p) + 8*11))^0xd8acdea946ef1938)
 		acc += hi ^ lo
-		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 8*12))^0x3f349ce33f76faa8, *(*u64)(ptr(ui(p) + 8*13))^0x1d4f0bc7c7bbdcf9)
+
+		hi, lo = bits.Mul64(
+			*(*u64)(ptr(ui(p) + 8*12))^0x3f349ce33f76faa8,
+			*(*u64)(ptr(ui(p) + 8*13))^0x1d4f0bc7c7bbdcf9)
 		acc += hi ^ lo
-		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 8*14))^0x3159b4cd4be0518a, *(*u64)(ptr(ui(p) + 8*15))^0x647378d9c97e9fc8)
+
+		hi, lo = bits.Mul64(
+			*(*u64)(ptr(ui(p) + 8*14))^0x3159b4cd4be0518a,
+			*(*u64)(ptr(ui(p) + 8*15))^0x647378d9c97e9fc8)
 		acc += hi ^ lo
 
 		// avalanche
@@ -119,29 +142,49 @@ func hash(s string) (acc u64) {
 		acc = l * prime64_1
 
 		if l > 96 {
-			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 6*8))^0x3f349ce33f76faa8, *(*u64)(ptr(ui(p) + 7*8))^0x1d4f0bc7c7bbdcf9)
+			hi, lo = bits.Mul64(
+				*(*u64)(ptr(ui(p) + 6*8))^0x3f349ce33f76faa8,
+				*(*u64)(ptr(ui(p) + 7*8))^0x1d4f0bc7c7bbdcf9)
 			acc += hi ^ lo
-			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + ui(l) - 8*8))^0x3159b4cd4be0518a, *(*u64)(ptr(ui(p) + ui(l) - 7*8))^0x647378d9c97e9fc8)
+
+			hi, lo = bits.Mul64(
+				*(*u64)(ptr(ui(p) + ui(l) - 8*8))^0x3159b4cd4be0518a,
+				*(*u64)(ptr(ui(p) + ui(l) - 7*8))^0x647378d9c97e9fc8)
 			acc += hi ^ lo
 		}
 
 		if l > 64 {
-			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 4*8))^0xcb00c391bb52283c, *(*u64)(ptr(ui(p) + 5*8))^0xa32e531b8b65d088)
+			hi, lo = bits.Mul64(
+				*(*u64)(ptr(ui(p) + 4*8))^0xcb00c391bb52283c,
+				*(*u64)(ptr(ui(p) + 5*8))^0xa32e531b8b65d088)
 			acc += hi ^ lo
-			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + ui(l) - 6*8))^0x4ef90da297486471, *(*u64)(ptr(ui(p) + ui(l) - 5*8))^0xd8acdea946ef1938)
+
+			hi, lo = bits.Mul64(
+				*(*u64)(ptr(ui(p) + ui(l) - 6*8))^0x4ef90da297486471,
+				*(*u64)(ptr(ui(p) + ui(l) - 5*8))^0xd8acdea946ef1938)
 			acc += hi ^ lo
 		}
 
 		if l > 32 {
-			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 2*8))^0x78e5c0cc4ee679cb, *(*u64)(ptr(ui(p) + 3*8))^0x2172ffcc7dd05a82)
+			hi, lo = bits.Mul64(
+				*(*u64)(ptr(ui(p) + 2*8))^0x78e5c0cc4ee679cb,
+				*(*u64)(ptr(ui(p) + 3*8))^0x2172ffcc7dd05a82)
 			acc += hi ^ lo
-			hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + ui(l) - 4*8))^0x8e2443f7744608b8, *(*u64)(ptr(ui(p) + ui(l) - 3*8))^0x4c263a81e69035e0)
+
+			hi, lo = bits.Mul64(
+				*(*u64)(ptr(ui(p) + ui(l) - 4*8))^0x8e2443f7744608b8,
+				*(*u64)(ptr(ui(p) + ui(l) - 3*8))^0x4c263a81e69035e0)
 			acc += hi ^ lo
 		}
 
-		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + 0*8))^0xbe4ba423396cfeb8, *(*u64)(ptr(ui(p) + 1*8))^0x1cad21f72c81017c)
+		hi, lo = bits.Mul64(
+			*(*u64)(ptr(ui(p) + 0*8))^0xbe4ba423396cfeb8,
+			*(*u64)(ptr(ui(p) + 1*8))^0x1cad21f72c81017c)
 		acc += hi ^ lo
-		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + ui(l) - 2*8))^0xdb979083e96dd4de, *(*u64)(ptr(ui(p) + ui(l) - 1*8))^0x1f67b3b7a4a44072)
+
+		hi, lo = bits.Mul64(
+			*(*u64)(ptr(ui(p) + ui(l) - 2*8))^0xdb979083e96dd4de,
+			*(*u64)(ptr(ui(p) + ui(l) - 1*8))^0x1f67b3b7a4a44072)
 		acc += hi ^ lo
 
 		// avalanche
@@ -208,43 +251,45 @@ func hash_large(s string) (acc u64) {
 
 	p, l := *(*ptr)(ptr(&s)), u64(len(s))
 	acc = l * prime64_1
-	accs := [8]u64{prime32_3, prime64_1, prime64_2, prime64_3, prime64_4, prime32_2, prime64_5, prime32_1}
+	accs := [8]u64{
+		prime32_3, prime64_1, prime64_2, prime64_3,
+		prime64_4, prime32_2, prime64_5, prime32_1}
 
 	for l >= _block {
 		k := key
 
 		// accs
 		for i := 0; i < 16; i++ {
-			dv0, kv0 := *(*u64)(ptr(ui(p) + 8*0)), *(*u64)(ptr(ui(k) + 8*0))
-			dk0 := dv0 ^ kv0
+			dv0 := *(*u64)(ptr(ui(p) + 8*0))
+			dk0 := dv0 ^ *(*u64)(ptr(ui(k) + 8*0))
 			accs[0] += dv0 + (dk0&0xffffffff)*(dk0>>32)
 
-			dv1, kv1 := *(*u64)(ptr(ui(p) + 8*1)), *(*u64)(ptr(ui(k) + 8*1))
-			dk1 := dv1 ^ kv1
+			dv1 := *(*u64)(ptr(ui(p) + 8*1))
+			dk1 := dv1 ^ *(*u64)(ptr(ui(k) + 8*1))
 			accs[1] += dv1 + (dk1&0xffffffff)*(dk1>>32)
 
-			dv2, kv2 := *(*u64)(ptr(ui(p) + 8*2)), *(*u64)(ptr(ui(k) + 8*2))
-			dk2 := dv2 ^ kv2
+			dv2 := *(*u64)(ptr(ui(p) + 8*2))
+			dk2 := dv2 ^ *(*u64)(ptr(ui(k) + 8*2))
 			accs[2] += dv2 + (dk2&0xffffffff)*(dk2>>32)
 
-			dv3, kv3 := *(*u64)(ptr(ui(p) + 8*3)), *(*u64)(ptr(ui(k) + 8*3))
-			dk3 := dv3 ^ kv3
+			dv3 := *(*u64)(ptr(ui(p) + 8*3))
+			dk3 := dv3 ^ *(*u64)(ptr(ui(k) + 8*3))
 			accs[3] += dv3 + (dk3&0xffffffff)*(dk3>>32)
 
-			dv4, kv4 := *(*u64)(ptr(ui(p) + 8*4)), *(*u64)(ptr(ui(k) + 8*4))
-			dk4 := dv4 ^ kv4
+			dv4 := *(*u64)(ptr(ui(p) + 8*4))
+			dk4 := dv4 ^ *(*u64)(ptr(ui(k) + 8*4))
 			accs[4] += dv4 + (dk4&0xffffffff)*(dk4>>32)
 
-			dv5, kv5 := *(*u64)(ptr(ui(p) + 8*5)), *(*u64)(ptr(ui(k) + 8*5))
-			dk5 := dv5 ^ kv5
+			dv5 := *(*u64)(ptr(ui(p) + 8*5))
+			dk5 := dv5 ^ *(*u64)(ptr(ui(k) + 8*5))
 			accs[5] += dv5 + (dk5&0xffffffff)*(dk5>>32)
 
-			dv6, kv6 := *(*u64)(ptr(ui(p) + 8*6)), *(*u64)(ptr(ui(k) + 8*6))
-			dk6 := dv6 ^ kv6
+			dv6 := *(*u64)(ptr(ui(p) + 8*6))
+			dk6 := dv6 ^ *(*u64)(ptr(ui(k) + 8*6))
 			accs[6] += dv6 + (dk6&0xffffffff)*(dk6>>32)
 
-			dv7, kv7 := *(*u64)(ptr(ui(p) + 8*7)), *(*u64)(ptr(ui(k) + 8*7))
-			dk7 := dv7 ^ kv7
+			dv7 := *(*u64)(ptr(ui(p) + 8*7))
+			dk7 := dv7 ^ *(*u64)(ptr(ui(k) + 8*7))
 			accs[7] += dv7 + (dk7&0xffffffff)*(dk7>>32)
 
 			p, k = ptr(ui(p)+_stripe), ptr(ui(k)+8)
@@ -252,35 +297,35 @@ func hash_large(s string) (acc u64) {
 
 		// scramble accs
 		accs[0] ^= accs[0] >> 47
-		accs[0] ^= *(*u64)(ptr(ui(k) + 0*8))
+		accs[0] ^= 0xc3ebd33483acc5ea
 		accs[0] *= prime32_1
 
 		accs[1] ^= accs[1] >> 47
-		accs[1] ^= *(*u64)(ptr(ui(k) + 1*8))
+		accs[1] ^= 0xeb6313faffa081c5
 		accs[1] *= prime32_1
 
 		accs[2] ^= accs[2] >> 47
-		accs[2] ^= *(*u64)(ptr(ui(k) + 2*8))
+		accs[2] ^= 0x49daf0b751dd0d17
 		accs[2] *= prime32_1
 
 		accs[3] ^= accs[3] >> 47
-		accs[3] ^= *(*u64)(ptr(ui(k) + 3*8))
+		accs[3] ^= 0x9e68d429265516d3
 		accs[3] *= prime32_1
 
 		accs[4] ^= accs[4] >> 47
-		accs[4] ^= *(*u64)(ptr(ui(k) + 4*8))
+		accs[4] ^= 0xfca1477d58be162b
 		accs[4] *= prime32_1
 
 		accs[5] ^= accs[5] >> 47
-		accs[5] ^= *(*u64)(ptr(ui(k) + 5*8))
+		accs[5] ^= 0xce31d07ad1b8f88f
 		accs[5] *= prime32_1
 
 		accs[6] ^= accs[6] >> 47
-		accs[6] ^= *(*u64)(ptr(ui(k) + 6*8))
+		accs[6] ^= 0x280416958f3acb45
 		accs[6] *= prime32_1
 
 		accs[7] ^= accs[7] >> 47
-		accs[7] ^= *(*u64)(ptr(ui(k) + 7*8))
+		accs[7] ^= 0x7e404bbbcafbd7af
 		accs[7] *= prime32_1
 
 		l -= 16 * _stripe
@@ -290,36 +335,36 @@ func hash_large(s string) (acc u64) {
 		t, k := (l%_block)/_stripe, key
 
 		for i := u64(0); i < t; i++ {
-			dv0, kv0 := *(*u64)(ptr(ui(p) + 8*0)), *(*u64)(ptr(ui(k) + 8*0))
-			dk0 := dv0 ^ kv0
+			dv0 := *(*u64)(ptr(ui(p) + 8*0))
+			dk0 := dv0 ^ *(*u64)(ptr(ui(k) + 8*0))
 			accs[0] += dv0 + (dk0&0xffffffff)*(dk0>>32)
 
-			dv1, kv1 := *(*u64)(ptr(ui(p) + 8*1)), *(*u64)(ptr(ui(k) + 8*1))
-			dk1 := dv1 ^ kv1
+			dv1 := *(*u64)(ptr(ui(p) + 8*1))
+			dk1 := dv1 ^ *(*u64)(ptr(ui(k) + 8*1))
 			accs[1] += dv1 + (dk1&0xffffffff)*(dk1>>32)
 
-			dv2, kv2 := *(*u64)(ptr(ui(p) + 8*2)), *(*u64)(ptr(ui(k) + 8*2))
-			dk2 := dv2 ^ kv2
+			dv2 := *(*u64)(ptr(ui(p) + 8*2))
+			dk2 := dv2 ^ *(*u64)(ptr(ui(k) + 8*2))
 			accs[2] += dv2 + (dk2&0xffffffff)*(dk2>>32)
 
-			dv3, kv3 := *(*u64)(ptr(ui(p) + 8*3)), *(*u64)(ptr(ui(k) + 8*3))
-			dk3 := dv3 ^ kv3
+			dv3 := *(*u64)(ptr(ui(p) + 8*3))
+			dk3 := dv3 ^ *(*u64)(ptr(ui(k) + 8*3))
 			accs[3] += dv3 + (dk3&0xffffffff)*(dk3>>32)
 
-			dv4, kv4 := *(*u64)(ptr(ui(p) + 8*4)), *(*u64)(ptr(ui(k) + 8*4))
-			dk4 := dv4 ^ kv4
+			dv4 := *(*u64)(ptr(ui(p) + 8*4))
+			dk4 := dv4 ^ *(*u64)(ptr(ui(k) + 8*4))
 			accs[4] += dv4 + (dk4&0xffffffff)*(dk4>>32)
 
-			dv5, kv5 := *(*u64)(ptr(ui(p) + 8*5)), *(*u64)(ptr(ui(k) + 8*5))
-			dk5 := dv5 ^ kv5
+			dv5 := *(*u64)(ptr(ui(p) + 8*5))
+			dk5 := dv5 ^ *(*u64)(ptr(ui(k) + 8*5))
 			accs[5] += dv5 + (dk5&0xffffffff)*(dk5>>32)
 
-			dv6, kv6 := *(*u64)(ptr(ui(p) + 8*6)), *(*u64)(ptr(ui(k) + 8*6))
-			dk6 := dv6 ^ kv6
+			dv6 := *(*u64)(ptr(ui(p) + 8*6))
+			dk6 := dv6 ^ *(*u64)(ptr(ui(k) + 8*6))
 			accs[6] += dv6 + (dk6&0xffffffff)*(dk6>>32)
 
-			dv7, kv7 := *(*u64)(ptr(ui(p) + 8*7)), *(*u64)(ptr(ui(k) + 8*7))
-			dk7 := dv7 ^ kv7
+			dv7 := *(*u64)(ptr(ui(p) + 8*7))
+			dk7 := dv7 ^ *(*u64)(ptr(ui(k) + 8*7))
 			accs[7] += dv7 + (dk7&0xffffffff)*(dk7>>32)
 
 			p, k, l = ptr(ui(p)+_stripe), ptr(ui(k)+8), l-_stripe
@@ -363,14 +408,15 @@ func hash_large(s string) (acc u64) {
 	}
 
 	// merge accs
-	hi1, lo1 := bits.Mul64(accs[0]^0x6dd4de1cad21f72c, accs[1]^0xa44072db979083e9)
-	acc += hi1 ^ lo1
-	hi2, lo2 := bits.Mul64(accs[2]^0xe679cb1f67b3b7a4, accs[3]^0xd05a8278e5c0cc4e)
-	acc += hi2 ^ lo2
-	hi3, lo3 := bits.Mul64(accs[4]^0x4608b82172ffcc7d, accs[5]^0x9035e08e2443f774)
-	acc += hi3 ^ lo3
-	hi4, lo4 := bits.Mul64(accs[6]^0x52283c4c263a81e6, accs[7]^0x65d088cb00c391bb)
-	acc += hi4 ^ lo4
+	var hi, lo u64
+	hi, lo = bits.Mul64(accs[0]^0x6dd4de1cad21f72c, accs[1]^0xa44072db979083e9)
+	acc += hi ^ lo
+	hi, lo = bits.Mul64(accs[2]^0xe679cb1f67b3b7a4, accs[3]^0xd05a8278e5c0cc4e)
+	acc += hi ^ lo
+	hi, lo = bits.Mul64(accs[4]^0x4608b82172ffcc7d, accs[5]^0x9035e08e2443f774)
+	acc += hi ^ lo
+	hi, lo = bits.Mul64(accs[6]^0x52283c4c263a81e6, accs[7]^0x65d088cb00c391bb)
+	acc += hi ^ lo
 
 	// avalanche
 	acc ^= acc >> 37
