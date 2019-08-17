@@ -11,12 +11,12 @@ func BenchmarkFixed(b *testing.B) {
 		bench := func(b *testing.B) {
 			b.SetBytes(int64(i))
 			var acc uint64
-			d := make([]byte, i)
+			d := string(make([]byte, i))
 			b.ReportAllocs()
 			b.ResetTimer()
 
 			for i := 0; i < b.N; i++ {
-				acc = Hash(d)
+				acc = HashString(d)
 			}
 			runtime.KeepAlive(acc)
 		}

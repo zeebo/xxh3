@@ -22,19 +22,17 @@ func main() {
 	acc := Mem{Base: Load(Param("acc"), GP64())}
 	data := Mem{Base: Load(Param("data"), GP64())}
 	key := Mem{Base: Load(Param("key"), GP64())}
-	len := Load(Param("len"), GP64())
+	skey := Mem{Base: Load(Param("key"), GP64())}
+	plen := Load(Param("len"), GP64())
 	prime := XMM()
 	a := [4]VecVirtual{XMM(), XMM(), XMM(), XMM()}
 
 	advance := func(n int) {
 		ADDQ(U32(n*64), data.Base)
-		ADDQ(U32(n*8), key.Base)
-		SUBQ(U32(n*64), len)
+		SUBQ(U32(n*64), plen)
 	}
 
-	accum := func(n int) {
-		doff, koff := 64*n, 8*n
-
+	accum := func(doff, koff int, key Mem) {
 		for n, offset := range []int{0x00, 0x10, 0x20, 0x30} {
 			x0, x1, x2 := XMM(), XMM(), XMM()
 
@@ -49,14 +47,14 @@ func main() {
 		}
 	}
 
-	scramble := func() {
+	scramble := func(koff int) {
 		for n, offset := range []int{0x00, 0x10, 0x20, 0x30} {
 			x0, x1 := XMM(), XMM()
 
 			MOVOU(a[n], x0)
 			PSRLQ(Imm(0x2f), x0)
 			PXOR(x0, a[n])
-			MOVOU(key.Offset(offset), x0)
+			MOVOU(key.Offset(koff+offset), x0)
 			PXOR(x0, a[n])
 			PSHUFD(Imm(0xf5), a[n], x1) // 3 3 1 1
 			PMULULQ(prime, a[n])
@@ -78,43 +76,39 @@ func main() {
 
 	Label("accum_large")
 	{
-		CMPQ(len, U32(1024))
+		CMPQ(plen, U32(1024))
 		JLT(LabelRef("accum"))
 
 		for i := 0; i < 16; i++ {
-			accum(i)
+			accum(64*i, 8*i, key)
 		}
 		advance(16)
-
-		scramble()
-		Load(Param("key"), key.Base)
+		scramble(8 * 16)
 
 		JMP(LabelRef("accum_large"))
 	}
 
 	Label("accum")
 	{
-		CMPQ(len, Imm(64))
+		CMPQ(plen, Imm(64))
 		JLT(LabelRef("finalize"))
 
-		accum(0)
+		accum(0, 0, skey)
 		advance(1)
+		ADDQ(U32(8), skey.Base)
 
 		JMP(LabelRef("accum"))
 	}
 
 	Label("finalize")
 	{
-		CMPQ(len, Imm(0))
+		CMPQ(plen, Imm(0))
 		JE(LabelRef("return"))
 
 		SUBQ(Imm(64), data.Base)
-		ADDQ(len, data.Base)
+		ADDQ(plen, data.Base)
 
-		Load(Param("key"), key.Base)
-		ADDQ(U8(121), key.Base)
-
-		accum(0)
+		accum(0, 121, key)
 	}
 
 	Label("return")

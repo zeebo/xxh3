@@ -7,18 +7,17 @@ GLOBL prime_avx<>(SB), RODATA|NOPTR, $4
 
 // func accum_avx(acc *[8]uint64, data *byte, key *byte, len uint64)
 TEXT ·accum_avx(SB), NOSPLIT, $0-32
-	MOVQ acc+0(FP), AX
-	MOVQ data+8(FP), CX
-	MOVQ key+16(FP), DX
-	MOVQ len+24(FP), BX
-
-load:
+	MOVQ         acc+0(FP), AX
+	MOVQ         data+8(FP), CX
+	MOVQ         key+16(FP), DX
+	MOVQ         key+16(FP), BX
+	MOVQ         len+24(FP), BP
 	VMOVDQU      (AX), Y1
 	VMOVDQU      32(AX), Y2
 	VPBROADCASTQ prime_avx<>+0(SB), Y0
 
 accum_large:
-	CMPQ     BX, $0x00000400
+	CMPQ     BP, $0x00000400
 	JLT      accum
 	VMOVDQU  (CX), Y3
 	VPXOR    (DX), Y3, Y4
@@ -213,11 +212,10 @@ accum_large:
 	VPADDQ   Y3, Y4, Y3
 	VPADDQ   Y2, Y3, Y2
 	ADDQ     $0x00000400, CX
-	ADDQ     $0x00000080, DX
-	SUBQ     $0x00000400, BX
+	SUBQ     $0x00000400, BP
 	VPSRLQ   $0x2f, Y1, Y3
 	VPXOR    Y1, Y3, Y3
-	VPXOR    (DX), Y3, Y3
+	VPXOR    128(DX), Y3, Y3
 	VPMULUDQ Y0, Y3, Y1
 	VPSHUFD  $0xf5, Y3, Y3
 	VPMULUDQ Y0, Y3, Y3
@@ -225,50 +223,47 @@ accum_large:
 	VPADDQ   Y1, Y3, Y1
 	VPSRLQ   $0x2f, Y2, Y3
 	VPXOR    Y2, Y3, Y3
-	VPXOR    32(DX), Y3, Y3
+	VPXOR    160(DX), Y3, Y3
 	VPMULUDQ Y0, Y3, Y2
 	VPSHUFD  $0xf5, Y3, Y3
 	VPMULUDQ Y0, Y3, Y3
 	VPSLLQ   $0x20, Y3, Y3
 	VPADDQ   Y2, Y3, Y2
-	MOVQ     key+16(FP), DX
 	JMP      accum_large
 
 accum:
-	CMPQ     BX, $0x40
+	CMPQ     BP, $0x40
 	JLT      finalize
 	VMOVDQU  (CX), Y0
-	VPXOR    (DX), Y0, Y3
+	VPXOR    (BX), Y0, Y3
 	VPSHUFD  $0xf5, Y3, Y4
 	VPMULUDQ Y4, Y3, Y3
 	VPADDQ   Y0, Y3, Y0
 	VPADDQ   Y1, Y0, Y1
 	VMOVDQU  32(CX), Y0
-	VPXOR    32(DX), Y0, Y3
+	VPXOR    32(BX), Y0, Y3
 	VPSHUFD  $0xf5, Y3, Y4
 	VPMULUDQ Y4, Y3, Y3
 	VPADDQ   Y0, Y3, Y0
 	VPADDQ   Y2, Y0, Y2
 	ADDQ     $0x00000040, CX
-	ADDQ     $0x00000008, DX
-	SUBQ     $0x00000040, BX
+	SUBQ     $0x00000040, BP
+	ADDQ     $0x00000008, BX
 	JMP      accum
 
 finalize:
-	CMPQ     BX, $0x00
+	CMPQ     BP, $0x00
 	JE       return
 	SUBQ     $0x40, CX
-	ADDQ     BX, CX
-	MOVQ     key+16(FP), DX
-	ADDQ     $0x79, DX
+	ADDQ     BP, CX
 	VMOVDQU  (CX), Y0
-	VPXOR    (DX), Y0, Y3
+	VPXOR    121(DX), Y0, Y3
 	VPSHUFD  $0xf5, Y3, Y4
 	VPMULUDQ Y4, Y3, Y3
 	VPADDQ   Y0, Y3, Y0
 	VPADDQ   Y1, Y0, Y1
 	VMOVDQU  32(CX), Y0
-	VPXOR    32(DX), Y0, Y3
+	VPXOR    153(DX), Y0, Y3
 	VPSHUFD  $0xf5, Y3, Y4
 	VPMULUDQ Y4, Y3, Y3
 	VPADDQ   Y0, Y3, Y0

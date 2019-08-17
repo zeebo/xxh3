@@ -18,10 +18,11 @@ func accum_avx(acc *[8]u64, data, key unsafe.Pointer, len u64)
 //go:noescape
 func accum_sse(acc *[8]u64, data, key unsafe.Pointer, len u64)
 
-func hash_vector(s string) (acc u64) {
-	p, l := *(*ptr)(ptr(&s)), u64(len(s))
+func hash_vector(p ptr, l u64) (acc u64) {
 	acc = l * prime64_1
-	accs := [8]u64{prime32_3, prime64_1, prime64_2, prime64_3, prime64_4, prime32_2, prime64_5, prime32_1}
+	accs := [8]u64{
+		prime32_3, prime64_1, prime64_2, prime64_3,
+		prime64_4, prime32_2, prime64_5, prime32_1}
 
 	if avx2 {
 		accum_avx(&accs, p, key, l)

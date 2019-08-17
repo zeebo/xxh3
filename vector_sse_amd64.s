@@ -10,12 +10,11 @@ GLOBL prime_sse<>(SB), RODATA|NOPTR, $16
 
 // func accum_sse(acc *[8]uint64, data *byte, key *byte, len uint64)
 TEXT ·accum_sse(SB), NOSPLIT, $0-32
-	MOVQ acc+0(FP), AX
-	MOVQ data+8(FP), CX
-	MOVQ key+16(FP), DX
-	MOVQ len+24(FP), BX
-
-load:
+	MOVQ  acc+0(FP), AX
+	MOVQ  data+8(FP), CX
+	MOVQ  key+16(FP), DX
+	MOVQ  key+16(FP), BX
+	MOVQ  len+24(FP), BP
 	MOVOU (AX), X1
 	MOVOU 16(AX), X2
 	MOVOU 32(AX), X3
@@ -23,7 +22,7 @@ load:
 	MOVOU prime_sse<>+0(SB), X0
 
 accum_large:
-	CMPQ    BX, $0x00000400
+	CMPQ    BP, $0x00000400
 	JLT     accum
 	MOVOU   (CX), X5
 	MOVOU   (DX), X6
@@ -474,12 +473,11 @@ accum_large:
 	PADDQ   X5, X7
 	PADDQ   X7, X4
 	ADDQ    $0x00000400, CX
-	ADDQ    $0x00000080, DX
-	SUBQ    $0x00000400, BX
+	SUBQ    $0x00000400, BP
 	MOVOU   X1, X5
 	PSRLQ   $0x2f, X5
 	PXOR    X5, X1
-	MOVOU   (DX), X5
+	MOVOU   128(DX), X5
 	PXOR    X5, X1
 	PSHUFD  $0xf5, X1, X5
 	PMULULQ X0, X1
@@ -489,7 +487,7 @@ accum_large:
 	MOVOU   X2, X5
 	PSRLQ   $0x2f, X5
 	PXOR    X5, X2
-	MOVOU   16(DX), X5
+	MOVOU   144(DX), X5
 	PXOR    X5, X2
 	PSHUFD  $0xf5, X2, X5
 	PMULULQ X0, X2
@@ -499,7 +497,7 @@ accum_large:
 	MOVOU   X3, X5
 	PSRLQ   $0x2f, X5
 	PXOR    X5, X3
-	MOVOU   32(DX), X5
+	MOVOU   160(DX), X5
 	PXOR    X5, X3
 	PSHUFD  $0xf5, X3, X5
 	PMULULQ X0, X3
@@ -509,82 +507,79 @@ accum_large:
 	MOVOU   X4, X5
 	PSRLQ   $0x2f, X5
 	PXOR    X5, X4
-	MOVOU   48(DX), X5
+	MOVOU   176(DX), X5
 	PXOR    X5, X4
 	PSHUFD  $0xf5, X4, X5
 	PMULULQ X0, X4
 	PMULULQ X0, X5
 	PSLLQ   $0x20, X5
 	PADDQ   X5, X4
-	MOVQ    key+16(FP), DX
 	JMP     accum_large
 
 accum:
-	CMPQ    BX, $0x40
+	CMPQ    BP, $0x40
 	JLT     finalize
 	MOVOU   (CX), X0
-	MOVOU   (DX), X5
+	MOVOU   (BX), X5
 	PXOR    X0, X5
 	PSHUFD  $0xf5, X5, X6
 	PMULULQ X5, X6
 	PADDQ   X0, X6
 	PADDQ   X6, X1
 	MOVOU   16(CX), X0
-	MOVOU   16(DX), X5
+	MOVOU   16(BX), X5
 	PXOR    X0, X5
 	PSHUFD  $0xf5, X5, X6
 	PMULULQ X5, X6
 	PADDQ   X0, X6
 	PADDQ   X6, X2
 	MOVOU   32(CX), X0
-	MOVOU   32(DX), X5
+	MOVOU   32(BX), X5
 	PXOR    X0, X5
 	PSHUFD  $0xf5, X5, X6
 	PMULULQ X5, X6
 	PADDQ   X0, X6
 	PADDQ   X6, X3
 	MOVOU   48(CX), X0
-	MOVOU   48(DX), X5
+	MOVOU   48(BX), X5
 	PXOR    X0, X5
 	PSHUFD  $0xf5, X5, X6
 	PMULULQ X5, X6
 	PADDQ   X0, X6
 	PADDQ   X6, X4
 	ADDQ    $0x00000040, CX
-	ADDQ    $0x00000008, DX
-	SUBQ    $0x00000040, BX
+	SUBQ    $0x00000040, BP
+	ADDQ    $0x00000008, BX
 	JMP     accum
 
 finalize:
-	CMPQ    BX, $0x00
+	CMPQ    BP, $0x00
 	JE      return
 	SUBQ    $0x40, CX
-	ADDQ    BX, CX
-	MOVQ    key+16(FP), DX
-	ADDQ    $0x79, DX
+	ADDQ    BP, CX
 	MOVOU   (CX), X0
-	MOVOU   (DX), X5
+	MOVOU   121(DX), X5
 	PXOR    X0, X5
 	PSHUFD  $0xf5, X5, X6
 	PMULULQ X5, X6
 	PADDQ   X0, X6
 	PADDQ   X6, X1
 	MOVOU   16(CX), X0
-	MOVOU   16(DX), X5
+	MOVOU   137(DX), X5
 	PXOR    X0, X5
 	PSHUFD  $0xf5, X5, X6
 	PMULULQ X5, X6
 	PADDQ   X0, X6
 	PADDQ   X6, X2
 	MOVOU   32(CX), X0
-	MOVOU   32(DX), X5
+	MOVOU   153(DX), X5
 	PXOR    X0, X5
 	PSHUFD  $0xf5, X5, X6
 	PMULULQ X5, X6
 	PADDQ   X0, X6
 	PADDQ   X6, X3
 	MOVOU   48(CX), X0
-	MOVOU   48(DX), X5
+	MOVOU   169(DX), X5
 	PXOR    X0, X5
 	PSHUFD  $0xf5, X5, X6
 	PMULULQ X5, X6

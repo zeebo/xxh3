@@ -46,50 +46,54 @@ var key = ptr(&[...]u8{
 
 // Hash returns the hash of the byte slice.
 func Hash(b []byte) uint64 {
-	return HashString(*(*string)(ptr(&b)))
+	if len(b) == 0 {
+		return 0
+	}
+	return hash(*(*ptr)(ptr(&b)), u64(len(b)))
 }
 
 // HashString returns the hash of the byte slice.
 func HashString(s string) uint64 {
-	p, l := *(*ptr)(ptr(&s)), u64(len(s))
-	var acc, hi, lo u64
-
-	if l == 0 {
+	if len(s) == 0 {
 		return 0
 	}
+	return hash(*(*ptr)(ptr(&s)), u64(len(s)))
+}
 
-	if l <= 16 {
-		if l < 4 {
-			c1 := *(*u8)(p)
-			c2 := *(*u8)(ptr(ui(p) + (ui(l) >> 1)))
-			c3 := *(*u8)(ptr(ui(p) + ui(l) - 1))
-			c4 := u32(c1) + (u32(c2) << 8) + (u32(c3) << 16) + (u32(l) << 24)
-			acc = u64(c4^0x396cfeb8) * prime64_1
+func hash(p ptr, l u64) (acc u64) {
+	var hi, lo u64
 
-			// avalanche
-			acc ^= acc >> 37
-			acc *= prime64_3
-			acc ^= acc >> 32
+	switch {
+	case l <= 3:
+		c1 := *(*u8)(p)
+		c2 := *(*u8)(ptr(ui(p) + (ui(l) >> 1)))
+		c3 := *(*u8)(ptr(ui(p) + ui(l) - 1))
+		c4 := u32(c1) + (u32(c2) << 8) + (u32(c3) << 16) + (u32(l) << 24)
+		acc = u64(c4^0x396cfeb8) * prime64_1
 
-			return acc
+		// avalanche
+		acc ^= acc >> 37
+		acc *= prime64_3
+		acc ^= acc >> 32
 
-		} else if l < 9 {
-			in1 := *(*u32)(p)
-			in2 := *(*u32)(ptr(ui(p) + ui(l) - 4))
-			in64 := u64(in1) + u64(in2)<<32
-			keyed := in64 ^ 0xbe4ba423396cfeb8
-			acc = l + (keyed^(keyed>>51))*prime32_1
-			acc = (acc ^ (acc >> 47)) * prime64_2
+		return acc
 
-			// avalanche
-			acc ^= acc >> 37
-			acc *= prime64_3
-			acc ^= acc >> 32
+	case l <= 8:
+		in1 := *(*u32)(p)
+		in2 := *(*u32)(ptr(ui(p) + ui(l) - 4))
+		in64 := u64(in1) + u64(in2)<<32
+		keyed := in64 ^ 0xbe4ba423396cfeb8
+		acc = l + (keyed^(keyed>>51))*prime32_1
+		acc = (acc ^ (acc >> 47)) * prime64_2
 
-			return acc
+		// avalanche
+		acc ^= acc >> 37
+		acc *= prime64_3
+		acc ^= acc >> 32
 
-		}
+		return acc
 
+	case l <= 16:
 		ll1 := *(*u64)(p) ^ 0xbe4ba423396cfeb8
 		ll2 := *(*u64)(ptr(ui(p) + ui(l) - 8)) ^ 0x1cad21f72c81017c
 		hi, lo = bits.Mul64(ll1, ll2)
@@ -101,9 +105,8 @@ func HashString(s string) uint64 {
 		acc ^= acc >> 32
 
 		return acc
-	}
 
-	if l < 129 {
+	case l <= 128:
 		acc = l * prime64_1
 
 		if l > 32 {
@@ -158,50 +161,48 @@ func HashString(s string) uint64 {
 		acc ^= acc >> 32
 
 		return acc
-	}
 
-	if l < 241 {
+	case l <= 240:
 		acc = l * prime64_1
 
-		// first 8 groups
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 8*0))^0xbe4ba423396cfeb8,
-			*(*u64)(ptr(ui(p) + 8*1))^0x1cad21f72c81017c)
+			*(*u64)(ptr(ui(p) + 0*16 + 0))^0xbe4ba423396cfeb8,
+			*(*u64)(ptr(ui(p) + 0*16 + 8))^0x1cad21f72c81017c)
 		acc += hi ^ lo
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 8*2))^0xdb979083e96dd4de,
-			*(*u64)(ptr(ui(p) + 8*3))^0x1f67b3b7a4a44072)
+			*(*u64)(ptr(ui(p) + 1*16 + 0))^0xdb979083e96dd4de,
+			*(*u64)(ptr(ui(p) + 1*16 + 8))^0x1f67b3b7a4a44072)
 		acc += hi ^ lo
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 8*4))^0x78e5c0cc4ee679cb,
-			*(*u64)(ptr(ui(p) + 8*5))^0x2172ffcc7dd05a82)
+			*(*u64)(ptr(ui(p) + 2*16 + 0))^0x78e5c0cc4ee679cb,
+			*(*u64)(ptr(ui(p) + 2*16 + 8))^0x2172ffcc7dd05a82)
 		acc += hi ^ lo
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 8*6))^0x8e2443f7744608b8,
-			*(*u64)(ptr(ui(p) + 8*7))^0x4c263a81e69035e0)
+			*(*u64)(ptr(ui(p) + 3*16 + 0))^0x8e2443f7744608b8,
+			*(*u64)(ptr(ui(p) + 3*16 + 8))^0x4c263a81e69035e0)
 		acc += hi ^ lo
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 8*8))^0xcb00c391bb52283c,
-			*(*u64)(ptr(ui(p) + 8*9))^0xa32e531b8b65d088)
+			*(*u64)(ptr(ui(p) + 4*16 + 0))^0xcb00c391bb52283c,
+			*(*u64)(ptr(ui(p) + 4*16 + 8))^0xa32e531b8b65d088)
 		acc += hi ^ lo
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 8*10))^0x4ef90da297486471,
-			*(*u64)(ptr(ui(p) + 8*11))^0xd8acdea946ef1938)
+			*(*u64)(ptr(ui(p) + 5*16 + 0))^0x4ef90da297486471,
+			*(*u64)(ptr(ui(p) + 5*16 + 8))^0xd8acdea946ef1938)
 		acc += hi ^ lo
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 8*12))^0x3f349ce33f76faa8,
-			*(*u64)(ptr(ui(p) + 8*13))^0x1d4f0bc7c7bbdcf9)
+			*(*u64)(ptr(ui(p) + 6*16 + 0))^0x3f349ce33f76faa8,
+			*(*u64)(ptr(ui(p) + 6*16 + 8))^0x1d4f0bc7c7bbdcf9)
 		acc += hi ^ lo
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 8*14))^0x3159b4cd4be0518a,
-			*(*u64)(ptr(ui(p) + 8*15))^0x647378d9c97e9fc8)
+			*(*u64)(ptr(ui(p) + 7*16 + 0))^0x3159b4cd4be0518a,
+			*(*u64)(ptr(ui(p) + 7*16 + 8))^0x647378d9c97e9fc8)
 		acc += hi ^ lo
 
 		// avalanche
@@ -219,7 +220,9 @@ func HashString(s string) uint64 {
 		}
 
 		// last 16 bytes
-		hi, lo = bits.Mul64(*(*u64)(ptr(ui(p) + ui(l) - 16))^0xebd33483acc5ea64, *(*u64)(ptr(ui(p) + ui(l) - 8))^0x6313faffa081c5c3)
+		hi, lo = bits.Mul64(
+			*(*u64)(ptr(ui(p) + ui(l) - 16))^0xebd33483acc5ea64,
+			*(*u64)(ptr(ui(p) + ui(l) - 8))^0x6313faffa081c5c3)
 		acc += hi ^ lo
 
 		// avalanche
@@ -228,18 +231,19 @@ func HashString(s string) uint64 {
 		acc ^= acc >> 32
 
 		return acc
-	}
 
-	if avx2 || sse2 {
-		return hash_vector(s)
+	case avx2, sse2:
+		return hash_vector(p, l)
+
+	default:
+		return hash_large(p, l)
 	}
-	return hash_large(s)
 }
 
-func hash_large(s string) uint64 {
-	p, l := *(*ptr)(ptr(&s)), u64(len(s))
+func hash_large(p ptr, l u64) (acc u64) {
 	var hi, lo u64
-	acc := l * prime64_1
+
+	acc = l * prime64_1
 	accs := [8]u64{
 		prime32_3, prime64_1, prime64_2, prime64_3,
 		prime64_4, prime32_2, prime64_5, prime32_1}
