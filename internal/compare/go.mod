@@ -1,4 +1,4 @@
-module github.com/zeebo/xxh3/compare
+module github.com/zeebo/xxh3/internal/compare
 
 go 1.12
 
@@ -7,4 +7,4 @@ require (
 	github.com/zeebo/xxh3 v0.0.0-20190706061215-e3a4ded7d14f
 )
 
-replace github.com/zeebo/xxh3 => ../
+replace github.com/zeebo/xxh3 => ../../
