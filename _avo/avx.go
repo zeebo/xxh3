@@ -1,5 +1,3 @@
-// +build ignore
-
 package main
 
 import (
@@ -8,7 +6,7 @@ import (
 	. "github.com/mmcloughlin/avo/reg"
 )
 
-func main() {
+func AVX() {
 	// Lay out the prime constant in memory
 	primeData := GLOBL("prime_avx", RODATA|NOPTR)
 	DATA(0, U32(2654435761))
