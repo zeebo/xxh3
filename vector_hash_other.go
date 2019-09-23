@@ -7,4 +7,4 @@ const (
 	sse2 = false
 )
 
-func hash_vector(s string) u64 { return 0 }
+func hash_vector(_ ptr, _ u64) u64 { return 0 }
