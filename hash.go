@@ -1,6 +1,7 @@
 package xxh3
 
 import (
+	"encoding/binary"
 	"math/bits"
 	"unsafe"
 )
@@ -60,6 +61,9 @@ func HashString(s string) uint64 {
 	return hash(*(*ptr)(ptr(&s)), u64(len(s)))
 }
 
+func readU32(p ptr) uint32 { return binary.LittleEndian.Uint32((*[4]byte)(p)[:]) }
+func readU64(p ptr) uint64 { return binary.LittleEndian.Uint64((*[8]byte)(p)[:]) }
+
 func hash(p ptr, l u64) (acc u64) {
 	var hi, lo u64
 
@@ -79,8 +83,8 @@ func hash(p ptr, l u64) (acc u64) {
 		return acc
 
 	case l <= 8:
-		in1 := *(*u32)(p)
-		in2 := *(*u32)(ptr(ui(p) + ui(l) - 4))
+		in1 := readU32(p)
+		in2 := readU32(ptr(ui(p) + ui(l) - 4))
 		in64 := u64(in1) + u64(in2)<<32
 		keyed := in64 ^ 0xbe4ba423396cfeb8
 		acc = l + (keyed^(keyed>>51))*prime32_1
@@ -94,8 +98,8 @@ func hash(p ptr, l u64) (acc u64) {
 		return acc
 
 	case l <= 16:
-		ll1 := *(*u64)(p) ^ 0xbe4ba423396cfeb8
-		ll2 := *(*u64)(ptr(ui(p) + ui(l) - 8)) ^ 0x1cad21f72c81017c
+		ll1 := readU64(p) ^ 0xbe4ba423396cfeb8
+		ll2 := readU64(ptr(ui(p)+ui(l)-8)) ^ 0x1cad21f72c81017c
 		hi, lo = bits.Mul64(ll1, ll2)
 		acc = l + ll1 + ll2 + (hi ^ lo)
 
@@ -113,46 +117,46 @@ func hash(p ptr, l u64) (acc u64) {
 			if l > 64 {
 				if l > 96 {
 					hi, lo = bits.Mul64(
-						*(*u64)(ptr(ui(p) + 6*8))^0x3f349ce33f76faa8,
-						*(*u64)(ptr(ui(p) + 7*8))^0x1d4f0bc7c7bbdcf9)
+						readU64(ptr(ui(p)+6*8))^0x3f349ce33f76faa8,
+						readU64(ptr(ui(p)+7*8))^0x1d4f0bc7c7bbdcf9)
 					acc += hi ^ lo
 
 					hi, lo = bits.Mul64(
-						*(*u64)(ptr(ui(p) + ui(l) - 8*8))^0x3159b4cd4be0518a,
-						*(*u64)(ptr(ui(p) + ui(l) - 7*8))^0x647378d9c97e9fc8)
+						readU64(ptr(ui(p)+ui(l)-8*8))^0x3159b4cd4be0518a,
+						readU64(ptr(ui(p)+ui(l)-7*8))^0x647378d9c97e9fc8)
 					acc += hi ^ lo
 				} // 96
 
 				hi, lo = bits.Mul64(
-					*(*u64)(ptr(ui(p) + 4*8))^0xcb00c391bb52283c,
-					*(*u64)(ptr(ui(p) + 5*8))^0xa32e531b8b65d088)
+					readU64(ptr(ui(p)+4*8))^0xcb00c391bb52283c,
+					readU64(ptr(ui(p)+5*8))^0xa32e531b8b65d088)
 				acc += hi ^ lo
 
 				hi, lo = bits.Mul64(
-					*(*u64)(ptr(ui(p) + ui(l) - 6*8))^0x4ef90da297486471,
-					*(*u64)(ptr(ui(p) + ui(l) - 5*8))^0xd8acdea946ef1938)
+					readU64(ptr(ui(p)+ui(l)-6*8))^0x4ef90da297486471,
+					readU64(ptr(ui(p)+ui(l)-5*8))^0xd8acdea946ef1938)
 				acc += hi ^ lo
 			} // 64
 
 			hi, lo = bits.Mul64(
-				*(*u64)(ptr(ui(p) + 2*8))^0x78e5c0cc4ee679cb,
-				*(*u64)(ptr(ui(p) + 3*8))^0x2172ffcc7dd05a82)
+				readU64(ptr(ui(p)+2*8))^0x78e5c0cc4ee679cb,
+				readU64(ptr(ui(p)+3*8))^0x2172ffcc7dd05a82)
 			acc += hi ^ lo
 
 			hi, lo = bits.Mul64(
-				*(*u64)(ptr(ui(p) + ui(l) - 4*8))^0x8e2443f7744608b8,
-				*(*u64)(ptr(ui(p) + ui(l) - 3*8))^0x4c263a81e69035e0)
+				readU64(ptr(ui(p)+ui(l)-4*8))^0x8e2443f7744608b8,
+				readU64(ptr(ui(p)+ui(l)-3*8))^0x4c263a81e69035e0)
 			acc += hi ^ lo
 		} // 32
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 0*8))^0xbe4ba423396cfeb8,
-			*(*u64)(ptr(ui(p) + 1*8))^0x1cad21f72c81017c)
+			readU64(ptr(ui(p)+0*8))^0xbe4ba423396cfeb8,
+			readU64(ptr(ui(p)+1*8))^0x1cad21f72c81017c)
 		acc += hi ^ lo
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + ui(l) - 2*8))^0xdb979083e96dd4de,
-			*(*u64)(ptr(ui(p) + ui(l) - 1*8))^0x1f67b3b7a4a44072)
+			readU64(ptr(ui(p)+ui(l)-2*8))^0xdb979083e96dd4de,
+			readU64(ptr(ui(p)+ui(l)-1*8))^0x1f67b3b7a4a44072)
 		acc += hi ^ lo
 
 		// avalanche
@@ -166,43 +170,43 @@ func hash(p ptr, l u64) (acc u64) {
 		acc = l * prime64_1
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 0*16 + 0))^0xbe4ba423396cfeb8,
-			*(*u64)(ptr(ui(p) + 0*16 + 8))^0x1cad21f72c81017c)
+			readU64(ptr(ui(p)+0*16+0))^0xbe4ba423396cfeb8,
+			readU64(ptr(ui(p)+0*16+8))^0x1cad21f72c81017c)
 		acc += hi ^ lo
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 1*16 + 0))^0xdb979083e96dd4de,
-			*(*u64)(ptr(ui(p) + 1*16 + 8))^0x1f67b3b7a4a44072)
+			readU64(ptr(ui(p)+1*16+0))^0xdb979083e96dd4de,
+			readU64(ptr(ui(p)+1*16+8))^0x1f67b3b7a4a44072)
 		acc += hi ^ lo
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 2*16 + 0))^0x78e5c0cc4ee679cb,
-			*(*u64)(ptr(ui(p) + 2*16 + 8))^0x2172ffcc7dd05a82)
+			readU64(ptr(ui(p)+2*16+0))^0x78e5c0cc4ee679cb,
+			readU64(ptr(ui(p)+2*16+8))^0x2172ffcc7dd05a82)
 		acc += hi ^ lo
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 3*16 + 0))^0x8e2443f7744608b8,
-			*(*u64)(ptr(ui(p) + 3*16 + 8))^0x4c263a81e69035e0)
+			readU64(ptr(ui(p)+3*16+0))^0x8e2443f7744608b8,
+			readU64(ptr(ui(p)+3*16+8))^0x4c263a81e69035e0)
 		acc += hi ^ lo
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 4*16 + 0))^0xcb00c391bb52283c,
-			*(*u64)(ptr(ui(p) + 4*16 + 8))^0xa32e531b8b65d088)
+			readU64(ptr(ui(p)+4*16+0))^0xcb00c391bb52283c,
+			readU64(ptr(ui(p)+4*16+8))^0xa32e531b8b65d088)
 		acc += hi ^ lo
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 5*16 + 0))^0x4ef90da297486471,
-			*(*u64)(ptr(ui(p) + 5*16 + 8))^0xd8acdea946ef1938)
+			readU64(ptr(ui(p)+5*16+0))^0x4ef90da297486471,
+			readU64(ptr(ui(p)+5*16+8))^0xd8acdea946ef1938)
 		acc += hi ^ lo
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 6*16 + 0))^0x3f349ce33f76faa8,
-			*(*u64)(ptr(ui(p) + 6*16 + 8))^0x1d4f0bc7c7bbdcf9)
+			readU64(ptr(ui(p)+6*16+0))^0x3f349ce33f76faa8,
+			readU64(ptr(ui(p)+6*16+8))^0x1d4f0bc7c7bbdcf9)
 		acc += hi ^ lo
 
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + 7*16 + 0))^0x3159b4cd4be0518a,
-			*(*u64)(ptr(ui(p) + 7*16 + 8))^0x647378d9c97e9fc8)
+			readU64(ptr(ui(p)+7*16+0))^0x3159b4cd4be0518a,
+			readU64(ptr(ui(p)+7*16+8))^0x647378d9c97e9fc8)
 		acc += hi ^ lo
 
 		// avalanche
@@ -214,15 +218,15 @@ func hash(p ptr, l u64) (acc u64) {
 		top := ui(l) &^ 15
 		for i := ui(8 * 16); i < top; i += 16 {
 			hi, lo = bits.Mul64(
-				*(*u64)(ptr(ui(p) + i + 0))^*(*u64)(ptr(ui(key) + i - 125)),
-				*(*u64)(ptr(ui(p) + i + 8))^*(*u64)(ptr(ui(key) + i - 117)))
+				readU64(ptr(ui(p)+i+0))^readU64(ptr(ui(key)+i-125)),
+				readU64(ptr(ui(p)+i+8))^readU64(ptr(ui(key)+i-117)))
 			acc += hi ^ lo
 		}
 
 		// last 16 bytes
 		hi, lo = bits.Mul64(
-			*(*u64)(ptr(ui(p) + ui(l) - 16))^0xebd33483acc5ea64,
-			*(*u64)(ptr(ui(p) + ui(l) - 8))^0x6313faffa081c5c3)
+			readU64(ptr(ui(p)+ui(l)-16))^0xebd33483acc5ea64,
+			readU64(ptr(ui(p)+ui(l)-8))^0x6313faffa081c5c3)
 		acc += hi ^ lo
 
 		// avalanche
@@ -253,39 +257,42 @@ func hash_large(p ptr, l u64) (acc u64) {
 
 		// accs
 		for i := 0; i < 16; i++ {
-			dv0 := *(*u64)(ptr(ui(p) + 8*0))
-			dk0 := dv0 ^ *(*u64)(ptr(ui(k) + 8*0))
+			dv0 := readU64(ptr(ui(p) + 8*0))
+			dk0 := dv0 ^ readU64(ptr(ui(k)+8*0))
 			accs[0] += dv0 + (dk0&0xffffffff)*(dk0>>32)
 
-			dv1 := *(*u64)(ptr(ui(p) + 8*1))
-			dk1 := dv1 ^ *(*u64)(ptr(ui(k) + 8*1))
+			dv1 := readU64(ptr(ui(p) + 8*1))
+			dk1 := dv1 ^ readU64(ptr(ui(k)+8*1))
 			accs[1] += dv1 + (dk1&0xffffffff)*(dk1>>32)
 
-			dv2 := *(*u64)(ptr(ui(p) + 8*2))
-			dk2 := dv2 ^ *(*u64)(ptr(ui(k) + 8*2))
+			dv2 := readU64(ptr(ui(p) + 8*2))
+			dk2 := dv2 ^ readU64(ptr(ui(k)+8*2))
 			accs[2] += dv2 + (dk2&0xffffffff)*(dk2>>32)
 
-			dv3 := *(*u64)(ptr(ui(p) + 8*3))
-			dk3 := dv3 ^ *(*u64)(ptr(ui(k) + 8*3))
+			dv3 := readU64(ptr(ui(p) + 8*3))
+			dk3 := dv3 ^ readU64(ptr(ui(k)+8*3))
 			accs[3] += dv3 + (dk3&0xffffffff)*(dk3>>32)
 
-			dv4 := *(*u64)(ptr(ui(p) + 8*4))
-			dk4 := dv4 ^ *(*u64)(ptr(ui(k) + 8*4))
+			dv4 := readU64(ptr(ui(p) + 8*4))
+			dk4 := dv4 ^ readU64(ptr(ui(k)+8*4))
 			accs[4] += dv4 + (dk4&0xffffffff)*(dk4>>32)
 
-			dv5 := *(*u64)(ptr(ui(p) + 8*5))
-			dk5 := dv5 ^ *(*u64)(ptr(ui(k) + 8*5))
+			dv5 := readU64(ptr(ui(p) + 8*5))
+			dk5 := dv5 ^ readU64(ptr(ui(k)+8*5))
 			accs[5] += dv5 + (dk5&0xffffffff)*(dk5>>32)
 
-			dv6 := *(*u64)(ptr(ui(p) + 8*6))
-			dk6 := dv6 ^ *(*u64)(ptr(ui(k) + 8*6))
+			dv6 := readU64(ptr(ui(p) + 8*6))
+			dk6 := dv6 ^ readU64(ptr(ui(k)+8*6))
 			accs[6] += dv6 + (dk6&0xffffffff)*(dk6>>32)
 
-			dv7 := *(*u64)(ptr(ui(p) + 8*7))
-			dk7 := dv7 ^ *(*u64)(ptr(ui(k) + 8*7))
+			dv7 := readU64(ptr(ui(p) + 8*7))
+			dk7 := dv7 ^ readU64(ptr(ui(k)+8*7))
 			accs[7] += dv7 + (dk7&0xffffffff)*(dk7>>32)
 
-			p, k = ptr(ui(p)+_stripe), ptr(ui(k)+8)
+			l -= _stripe
+			if l > 0 {
+				p, k = ptr(ui(p)+_stripe), ptr(ui(k)+8)
+			}
 		}
 
 		// scramble accs
@@ -320,81 +327,82 @@ func hash_large(p ptr, l u64) (acc u64) {
 		accs[7] ^= accs[7] >> 47
 		accs[7] ^= 0x7e404bbbcafbd7af
 		accs[7] *= prime32_1
-
-		l -= 16 * _stripe
 	}
 
 	if l > 0 {
 		t, k := (l%_block)/_stripe, key
 
 		for i := u64(0); i < t; i++ {
-			dv0 := *(*u64)(ptr(ui(p) + 8*0))
-			dk0 := dv0 ^ *(*u64)(ptr(ui(k) + 8*0))
+			dv0 := readU64(ptr(ui(p) + 8*0))
+			dk0 := dv0 ^ readU64(ptr(ui(k)+8*0))
 			accs[0] += dv0 + (dk0&0xffffffff)*(dk0>>32)
 
-			dv1 := *(*u64)(ptr(ui(p) + 8*1))
-			dk1 := dv1 ^ *(*u64)(ptr(ui(k) + 8*1))
+			dv1 := readU64(ptr(ui(p) + 8*1))
+			dk1 := dv1 ^ readU64(ptr(ui(k)+8*1))
 			accs[1] += dv1 + (dk1&0xffffffff)*(dk1>>32)
 
-			dv2 := *(*u64)(ptr(ui(p) + 8*2))
-			dk2 := dv2 ^ *(*u64)(ptr(ui(k) + 8*2))
+			dv2 := readU64(ptr(ui(p) + 8*2))
+			dk2 := dv2 ^ readU64(ptr(ui(k)+8*2))
 			accs[2] += dv2 + (dk2&0xffffffff)*(dk2>>32)
 
-			dv3 := *(*u64)(ptr(ui(p) + 8*3))
-			dk3 := dv3 ^ *(*u64)(ptr(ui(k) + 8*3))
+			dv3 := readU64(ptr(ui(p) + 8*3))
+			dk3 := dv3 ^ readU64(ptr(ui(k)+8*3))
 			accs[3] += dv3 + (dk3&0xffffffff)*(dk3>>32)
 
-			dv4 := *(*u64)(ptr(ui(p) + 8*4))
-			dk4 := dv4 ^ *(*u64)(ptr(ui(k) + 8*4))
+			dv4 := readU64(ptr(ui(p) + 8*4))
+			dk4 := dv4 ^ readU64(ptr(ui(k)+8*4))
 			accs[4] += dv4 + (dk4&0xffffffff)*(dk4>>32)
 
-			dv5 := *(*u64)(ptr(ui(p) + 8*5))
-			dk5 := dv5 ^ *(*u64)(ptr(ui(k) + 8*5))
+			dv5 := readU64(ptr(ui(p) + 8*5))
+			dk5 := dv5 ^ readU64(ptr(ui(k)+8*5))
 			accs[5] += dv5 + (dk5&0xffffffff)*(dk5>>32)
 
-			dv6 := *(*u64)(ptr(ui(p) + 8*6))
-			dk6 := dv6 ^ *(*u64)(ptr(ui(k) + 8*6))
+			dv6 := readU64(ptr(ui(p) + 8*6))
+			dk6 := dv6 ^ readU64(ptr(ui(k)+8*6))
 			accs[6] += dv6 + (dk6&0xffffffff)*(dk6>>32)
 
-			dv7 := *(*u64)(ptr(ui(p) + 8*7))
-			dk7 := dv7 ^ *(*u64)(ptr(ui(k) + 8*7))
+			dv7 := readU64(ptr(ui(p) + 8*7))
+			dk7 := dv7 ^ readU64(ptr(ui(k)+8*7))
 			accs[7] += dv7 + (dk7&0xffffffff)*(dk7>>32)
 
-			p, k, l = ptr(ui(p)+_stripe), ptr(ui(k)+8), l-_stripe
+			l -= _stripe
+			if l > 0 {
+				p, k = ptr(ui(p)+_stripe), ptr(ui(k)+8)
+			}
 		}
 
 		if l > 0 {
 			p = ptr(ui(p) - uintptr(_stripe-l))
 
-			dv0 := *(*u64)(ptr(ui(p) + 8*0))
+			dv0 := readU64(ptr(ui(p) + 8*0))
 			dk0 := dv0 ^ 0xea647378d9c97e9f
 			accs[0] += dv0 + (dk0&0xffffffff)*(dk0>>32)
 
-			dv1 := *(*u64)(ptr(ui(p) + 8*1))
+			dv1 := readU64(ptr(ui(p) + 8*1))
 			dk1 := dv1 ^ 0xc5c3ebd33483acc5
 			accs[1] += dv1 + (dk1&0xffffffff)*(dk1>>32)
 
-			dv2 := *(*u64)(ptr(ui(p) + 8*2))
+			dv2 := readU64(ptr(ui(p) + 8*2))
 			dk2 := dv2 ^ 0x17eb6313faffa081
 			accs[2] += dv2 + (dk2&0xffffffff)*(dk2>>32)
 
-			dv3 := *(*u64)(ptr(ui(p) + 8*3))
+			dv3 := readU64(ptr(ui(p) + 8*3))
 			dk3 := dv3 ^ 0xd349daf0b751dd0d
 			accs[3] += dv3 + (dk3&0xffffffff)*(dk3>>32)
 
-			dv4 := *(*u64)(ptr(ui(p) + 8*4))
+			dv4 := readU64(ptr(ui(p) + 8*4))
 			dk4 := dv4 ^ 0x2b9e68d429265516
 			accs[4] += dv4 + (dk4&0xffffffff)*(dk4>>32)
 
-			dv5 := *(*u64)(ptr(ui(p) + 8*5))
+			dv5 := readU64(ptr(ui(p) + 8*5))
 			dk5 := dv5 ^ 0x8ffca1477d58be16
 			accs[5] += dv5 + (dk5&0xffffffff)*(dk5>>32)
 
-			dv6 := *(*u64)(ptr(ui(p) + 8*6))
+			dv6 := readU64(ptr(ui(p) + 8*6))
 			dk6 := dv6 ^ 0x45ce31d07ad1b8f8
 			accs[6] += dv6 + (dk6&0xffffffff)*(dk6>>32)
 
-			dv7 := *(*u64)(ptr(ui(p) + 8*7))
+			dv7 := readU64(ptr(ui(p) + 8*7))
 			dk7 := dv7 ^ 0xaf280416958f3acb
 			accs[7] += dv7 + (dk7&0xffffffff)*(dk7>>32)
 		}
