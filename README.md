@@ -3,7 +3,7 @@
 [![Sourcegraph](https://sourcegraph.com/github.com/zeebo/xxh3/-/badge.svg)](https://sourcegraph.com/github.com/zeebo/xxh3?badge)
 [![Go Report Card](https://goreportcard.com/badge/github.com/zeebo/xxh3)](https://goreportcard.com/report/github.com/zeebo/xxh3)
 
-This package is a port of the [xxh3](https://github.com/Cyan4973/xxHash) library to Go.
+This package is a port of the [xxh3](https://github.com/Cyan4973/xxHash) library to Go. Upstream is not yet finalized, so the stability of this package is not guaranteed, yet.
 
 ---
 
