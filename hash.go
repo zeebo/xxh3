@@ -6,23 +6,24 @@ import (
 
 // Hash returns the hash of the byte slice.
 func Hash(b []byte) uint64 {
+	if len(b) == 0 {
+		return 0x2d06800538d394c2 // xxh_avalanche(key64_056 ^ key64_064)
+	}
 	return hash(*(*ptr)(ptr(&b)), u64(len(b)))
 }
 
 // HashString returns the hash of the byte slice.
 func HashString(s string) uint64 {
+	if len(s) == 0 {
+		return 0x2d06800538d394c2 // xxh_avalanche(key64_056 ^ key64_064)
+	}
 	return hash(*(*ptr)(ptr(&s)), u64(len(s)))
 }
 
 func hash(p ptr, l u64) (acc u64) {
 	const seed = 0
 
-	var hi, lo u64
-
 	switch {
-	case l == 0:
-		return xxh_avalanche(key64_056 ^ key64_064)
-
 	case l <= 3:
 		c1 := *(*u8)(p)
 		c2 := readU8(p, ui(l)>>1)
@@ -30,7 +31,7 @@ func hash(p ptr, l u64) (acc u64) {
 		combined := (u32(c1) << 16) | (u32(c2) << 24) | (u32(c3) << 0) | (u32(l) << 8)
 		bitflip := u64(key32_000) ^ u64(key32_004) + seed
 		keyed := u64(combined) ^ bitflip
-		return xxh_avalanche(keyed)
+		return xxhAvalanche(keyed)
 
 	case l <= 8:
 		input1 := readU32(p, 0)
@@ -43,10 +44,10 @@ func hash(p ptr, l u64) (acc u64) {
 	case l <= 16:
 		bitflip1 := key64_024 ^ key64_032 + seed
 		bitflip2 := key64_040 ^ key64_048 - seed
-		input_lo := readU64(p, 0) ^ bitflip1
-		input_hi := readU64(p, ui(l)-8) ^ bitflip2
-		return xxh3_avalanche(
-			l + bits.ReverseBytes64(input_lo) + input_hi + mul_fold64(input_lo, input_hi),
+		inputlo := readU64(p, 0) ^ bitflip1
+		inputhi := readU64(p, ui(l)-8) ^ bitflip2
+		return xxh3Avalanche(
+			l + bits.ReverseBytes64(inputlo) + inputhi + mulFold64(inputlo, inputhi),
 		)
 
 	case l <= 128:
@@ -55,125 +56,105 @@ func hash(p ptr, l u64) (acc u64) {
 		if l > 32 {
 			if l > 64 {
 				if l > 96 {
-					hi, lo = bits.Mul64(
+					acc += mulFold64(
 						readU64(p, 6*8)^key64_096,
 						readU64(p, 7*8)^key64_104)
-					acc += hi ^ lo
 
-					hi, lo = bits.Mul64(
+					acc += mulFold64(
 						readU64(p, ui(l)-8*8)^key64_112,
 						readU64(p, ui(l)-7*8)^key64_120)
-					acc += hi ^ lo
 				} // 96
 
-				hi, lo = bits.Mul64(
+				acc += mulFold64(
 					readU64(p, 4*8)^key64_064,
 					readU64(p, 5*8)^key64_072)
-				acc += hi ^ lo
 
-				hi, lo = bits.Mul64(
+				acc += mulFold64(
 					readU64(p, ui(l)-6*8)^key64_080,
 					readU64(p, ui(l)-5*8)^key64_088)
-				acc += hi ^ lo
 			} // 64
 
-			hi, lo = bits.Mul64(
+			acc += mulFold64(
 				readU64(p, 2*8)^key64_032,
 				readU64(p, 3*8)^key64_040)
-			acc += hi ^ lo
 
-			hi, lo = bits.Mul64(
+			acc += mulFold64(
 				readU64(p, ui(l)-4*8)^key64_048,
 				readU64(p, ui(l)-3*8)^key64_056)
-			acc += hi ^ lo
 		} // 32
 
-		hi, lo = bits.Mul64(
+		acc += mulFold64(
 			readU64(p, 0*8)^key64_000,
 			readU64(p, 1*8)^key64_008)
-		acc += hi ^ lo
 
-		hi, lo = bits.Mul64(
+		acc += mulFold64(
 			readU64(p, ui(l)-2*8)^key64_016,
 			readU64(p, ui(l)-1*8)^key64_024)
-		acc += hi ^ lo
 
-		return xxh3_avalanche(acc)
+		return xxh3Avalanche(acc)
 
 	case l <= 240:
 		acc = l * prime64_1
 
-		hi, lo = bits.Mul64(
+		acc += mulFold64(
 			readU64(p, 0*16+0)^key64_000,
 			readU64(p, 0*16+8)^key64_008)
-		acc += hi ^ lo
 
-		hi, lo = bits.Mul64(
+		acc += mulFold64(
 			readU64(p, 1*16+0)^key64_016,
 			readU64(p, 1*16+8)^key64_024)
-		acc += hi ^ lo
 
-		hi, lo = bits.Mul64(
+		acc += mulFold64(
 			readU64(p, 2*16+0)^key64_032,
 			readU64(p, 2*16+8)^key64_040)
-		acc += hi ^ lo
 
-		hi, lo = bits.Mul64(
+		acc += mulFold64(
 			readU64(p, 3*16+0)^key64_048,
 			readU64(p, 3*16+8)^key64_056)
-		acc += hi ^ lo
 
-		hi, lo = bits.Mul64(
+		acc += mulFold64(
 			readU64(p, 4*16+0)^key64_064,
 			readU64(p, 4*16+8)^key64_072)
-		acc += hi ^ lo
 
-		hi, lo = bits.Mul64(
+		acc += mulFold64(
 			readU64(p, 5*16+0)^key64_080,
 			readU64(p, 5*16+8)^key64_088)
-		acc += hi ^ lo
 
-		hi, lo = bits.Mul64(
+		acc += mulFold64(
 			readU64(p, 6*16+0)^key64_096,
 			readU64(p, 6*16+8)^key64_104)
-		acc += hi ^ lo
 
-		hi, lo = bits.Mul64(
+		acc += mulFold64(
 			readU64(p, 7*16+0)^key64_112,
 			readU64(p, 7*16+8)^key64_120)
-		acc += hi ^ lo
 
 		// avalanche
-		acc = xxh3_avalanche(acc)
+		acc = xxh3Avalanche(acc)
 
 		// trailing groups after 128
 		top := ui(l) &^ 15
 		for i := ui(8 * 16); i < top; i += 16 {
-			hi, lo = bits.Mul64(
+			acc += mulFold64(
 				readU64(p, i+0)^readU64(key, i-125),
 				readU64(p, i+8)^readU64(key, i-117))
-			acc += hi ^ lo
 		}
 
 		// last 16 bytes
-		hi, lo = bits.Mul64(
+		acc += mulFold64(
 			readU64(p, ui(l)-16)^key64_127,
 			readU64(p, ui(l)-8)^key64_135)
-		acc += hi ^ lo
 
-		return xxh3_avalanche(acc)
+		return xxh3Avalanche(acc)
 
 	// case avx2, sse2:
 	// 	return hash_vector(p, l)
 
 	default:
-		return hash_large(p, l)
+		return hashLarge(p, l)
 	}
 }
 
-func hash_large(p ptr, l u64) (acc u64) {
-	var hi, lo u64
-
+func hashLarge(p ptr, l u64) (acc u64) {
 	acc = l * prime64_1
 	accs := [8]u64{
 		prime32_3, prime64_1, prime64_2, prime64_3,
@@ -360,15 +341,10 @@ func hash_large(p ptr, l u64) (acc u64) {
 	}
 
 	// merge accs
-	hi, lo = bits.Mul64(accs[0]^key64_011, accs[1]^key64_019)
-	acc += hi ^ lo
-	hi, lo = bits.Mul64(accs[2]^key64_027, accs[3]^key64_035)
-	acc += hi ^ lo
-	hi, lo = bits.Mul64(accs[4]^key64_043, accs[5]^key64_051)
-	acc += hi ^ lo
-	hi, lo = bits.Mul64(accs[6]^key64_059, accs[7]^key64_067)
-	acc += hi ^ lo
+	acc += mulFold64(accs[0]^key64_011, accs[1]^key64_019)
+	acc += mulFold64(accs[2]^key64_027, accs[3]^key64_035)
+	acc += mulFold64(accs[4]^key64_043, accs[5]^key64_051)
+	acc += mulFold64(accs[6]^key64_059, accs[7]^key64_067)
 
-	// avalanche
-	return xxh3_avalanche(acc)
+	return xxh3Avalanche(acc)
 }

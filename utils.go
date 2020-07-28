@@ -19,7 +19,7 @@ func readU8(p ptr, o ui) uint8   { return *(*uint8)(ptr(ui(p) + o)) }
 func readU32(p ptr, o ui) uint32 { return binary.LittleEndian.Uint32((*[4]byte)(ptr(ui(p) + o))[:]) }
 func readU64(p ptr, o ui) uint64 { return binary.LittleEndian.Uint64((*[8]byte)(ptr(ui(p) + o))[:]) }
 
-func xxh_avalanche(x u64) u64 {
+func xxhAvalanche(x u64) u64 {
 	x ^= x >> 33
 	x *= prime64_2
 	x ^= x >> 29
@@ -28,7 +28,7 @@ func xxh_avalanche(x u64) u64 {
 	return x
 }
 
-func xxh3_avalanche(x u64) u64 {
+func xxh3Avalanche(x u64) u64 {
 	x ^= x >> 37
 	x *= 0x165667919e3779f9
 	x ^= x >> 32
@@ -44,7 +44,7 @@ func rrmxmx(h64 u64, len u64) u64 {
 	return h64
 }
 
-func mul_fold64(x, y u64) u64 {
+func mulFold64(x, y u64) u64 {
 	hi, lo := bits.Mul64(x, y)
 	return hi ^ lo
 }
