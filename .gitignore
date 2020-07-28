@@ -2,3 +2,5 @@ upstream
 *.pprof
 xxh3.test
 .vscode
+*.txt
+a.out

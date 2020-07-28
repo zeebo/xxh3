@@ -27,13 +27,13 @@ func TestVectorCompat(t *testing.T) {
 		sse2Sum := Hash(b)
 
 		avx2, sse2 = false, false
-		cpuSum := Hash(b)
+		scalarSum := Hash(b)
 
-		if avx2Sum != sse2Sum || avx2Sum != cpuSum || sse2Sum != cpuSum {
-			t.Errorf("data: %d", len(b))
-			t.Errorf("avx2: %016x", avx2Sum)
-			t.Errorf("sse2: %016x", sse2Sum)
-			t.Errorf("cpu : %016x", cpuSum)
+		if avx2Sum != sse2Sum || avx2Sum != scalarSum || sse2Sum != scalarSum {
+			t.Errorf("data  : %d", len(b))
+			t.Errorf("avx2  : %016x", avx2Sum)
+			t.Errorf("sse2  : %016x", sse2Sum)
+			t.Errorf("scalar: %016x", scalarSum)
 			t.FailNow()
 		}
 	}

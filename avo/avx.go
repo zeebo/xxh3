@@ -11,7 +11,7 @@ func AVX() {
 	primeData := GLOBL("prime_avx", RODATA|NOPTR)
 	DATA(0, U32(2654435761))
 
-	TEXT("accum_avx", NOSPLIT, "func(acc *[8]uint64, data, key *byte, len uint64)")
+	TEXT("accumAVX2", NOSPLIT, "func(acc *[8]uint64, data, key *byte, len uint64)")
 	// %rdi, %rsi, %rdx, %rcx
 
 	acc := Mem{Base: Load(Param("acc"), GP64())}
@@ -32,12 +32,13 @@ func AVX() {
 			y0, y1, y2 := YMM(), YMM(), YMM()
 
 			VMOVDQU(data.Offset(doff+offset), y0)
-			VPXOR(key.Offset(koff+offset), y0, y1)
-			VPSHUFD(Imm(245), y1, y2)
-			VPMULUDQ(y2, y1, y1)
-			VPADDQ(y0, y1, y0)
-
+			VMOVDQU(key.Offset(koff+offset), y1)
+			VPXOR(y0, y1, y1)
+			VPSHUFD(Imm(49), y1, y2)
+			VPMULUDQ(y1, y2, y1)
+			VPSHUFD(Imm(78), y0, y0)
 			VPADDQ(a[n], y0, a[n])
+			VPADDQ(a[n], y1, a[n])
 		}
 	}
 
@@ -67,7 +68,7 @@ func AVX() {
 	Label("accum_large")
 	{
 		CMPQ(plen, U32(1024))
-		JLT(LabelRef("accum"))
+		JLE(LabelRef("accum"))
 
 		for i := 0; i < 16; i++ {
 			accum(64*i, 8*i, key)
@@ -81,7 +82,7 @@ func AVX() {
 	Label("accum")
 	{
 		CMPQ(plen, Imm(64))
-		JLT(LabelRef("finalize"))
+		JLE(LabelRef("finalize"))
 
 		accum(0, 0, skey)
 		advance(1)

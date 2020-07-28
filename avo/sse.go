@@ -14,7 +14,7 @@ func SSE() {
 	DATA(8, U32(2654435761))
 	DATA(12, U32(2654435761))
 
-	TEXT("accum_sse", NOSPLIT, "func(acc *[8]uint64, data, key *byte, len uint64)")
+	TEXT("accumSSE", NOSPLIT, "func(acc *[8]uint64, data, key *byte, len uint64)")
 	// %rdi, %rsi, %rdx, %rcx
 
 	acc := Mem{Base: Load(Param("acc"), GP64())}
@@ -37,10 +37,10 @@ func SSE() {
 			MOVOU(data.Offset(doff+offset), x0)
 			MOVOU(key.Offset(koff+offset), x1)
 			PXOR(x0, x1)
-			PSHUFD(Imm(0xf5), x1, x2)
+			PSHUFD(Imm(49), x1, x2)
 			PMULULQ(x1, x2)
-			PADDQ(x0, x2)
-
+			PSHUFD(Imm(78), x0, x0)
+			PADDQ(x0, a[n])
 			PADDQ(x2, a[n])
 		}
 	}
@@ -75,7 +75,7 @@ func SSE() {
 	Label("accum_large")
 	{
 		CMPQ(plen, U32(1024))
-		JLT(LabelRef("accum"))
+		JLE(LabelRef("accum"))
 
 		for i := 0; i < 16; i++ {
 			accum(64*i, 8*i, key)
@@ -89,7 +89,7 @@ func SSE() {
 	Label("accum")
 	{
 		CMPQ(plen, Imm(64))
-		JLT(LabelRef("finalize"))
+		JLE(LabelRef("finalize"))
 
 		accum(0, 0, skey)
 		advance(1)

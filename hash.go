@@ -146,8 +146,8 @@ func hash(p ptr, l u64) (acc u64) {
 
 		return xxh3Avalanche(acc)
 
-	// case avx2, sse2:
-	// 	return hash_vector(p, l)
+	case avx2, sse2:
+		return hashVector(p, l)
 
 	default:
 		return hashLarge(p, l)
