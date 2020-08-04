@@ -12,7 +12,6 @@ func BenchmarkFixed(b *testing.B) {
 			b.SetBytes(int64(i))
 			var acc uint64
 			d := string(make([]byte, i))
-			b.ReportAllocs()
 			b.ResetTimer()
 
 			for i := 0; i < b.N; i++ {
@@ -41,6 +40,7 @@ func BenchmarkFixed(b *testing.B) {
 
 	r(0)
 	r(1)
+	r(2)
 	r(3)
 	r(4)
 	r(8)
@@ -59,5 +59,6 @@ func BenchmarkFixed(b *testing.B) {
 	r(241)
 	r(512)
 	r(1024)
+	r(8192)
 	r(100 * 1024)
 }

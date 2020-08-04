@@ -15,12 +15,15 @@ type (
 	u64 = uint64
 )
 
-func readU8(p ptr, o ui) uint8   { return *(*uint8)(ptr(ui(p) + o)) }
-func readU32(p ptr, o ui) uint32 { return binary.LittleEndian.Uint32((*[4]byte)(ptr(ui(p) + o))[:]) }
-func readU64(p ptr, o ui) uint64 { return binary.LittleEndian.Uint64((*[8]byte)(ptr(ui(p) + o))[:]) }
+var le = binary.LittleEndian
 
-func xxhAvalanche(x u64) u64 {
-	x ^= x >> 33
+func readU8(p ptr, o ui) uint8   { return *(*uint8)(ptr(ui(p) + o)) }
+func readU16(p ptr, o ui) uint16 { return le.Uint16((*[2]byte)(ptr(ui(p) + o))[:]) }
+func readU32(p ptr, o ui) uint32 { return le.Uint32((*[4]byte)(ptr(ui(p) + o))[:]) }
+func readU64(p ptr, o ui) uint64 { return le.Uint64((*[8]byte)(ptr(ui(p) + o))[:]) }
+
+func xxhAvalancheSmall(x u64) u64 {
+	x ^= u64(key32_000 ^ key32_004)
 	x *= prime64_2
 	x ^= x >> 29
 	x *= prime64_3

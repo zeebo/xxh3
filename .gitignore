@@ -3,4 +3,4 @@ upstream
 xxh3.test
 .vscode
 *.txt
-a.out
+_compat

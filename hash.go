@@ -1,57 +1,69 @@
 package xxh3
 
-import (
-	"math/bits"
-)
+import "math/bits"
 
 // Hash returns the hash of the byte slice.
 func Hash(b []byte) uint64 {
-	if len(b) == 0 {
-		return 0x2d06800538d394c2 // xxh_avalanche(key64_056 ^ key64_064)
+	fn := hashMed
+	if len(b) <= 16 {
+		fn = hashSmall
 	}
-	return hash(*(*ptr)(ptr(&b)), u64(len(b)))
+	return fn(*(*ptr)(ptr(&b)), len(b))
+
 }
 
-// HashString returns the hash of the byte slice.
+// Hash returns the hash of the string slice.
 func HashString(s string) uint64 {
-	if len(s) == 0 {
-		return 0x2d06800538d394c2 // xxh_avalanche(key64_056 ^ key64_064)
+	fn := hashMed
+	if len(s) <= 16 {
+		fn = hashSmall
 	}
-	return hash(*(*ptr)(ptr(&s)), u64(len(s)))
+	return fn(*(*ptr)(ptr(&s)), len(s))
 }
 
-func hash(p ptr, l u64) (acc u64) {
+func hashSmall(p ptr, l int) (acc u64) {
 	const seed = 0
 
 	switch {
-	case l <= 3:
-		c1 := *(*u8)(p)
-		c2 := readU8(p, ui(l)>>1)
-		c3 := readU8(p, ui(l)-1)
-		combined := (u32(c1) << 16) | (u32(c2) << 24) | (u32(c3) << 0) | (u32(l) << 8)
-		bitflip := u64(key32_000) ^ u64(key32_004) + seed
-		keyed := u64(combined) ^ bitflip
-		return xxhAvalanche(keyed)
+	case l > 8:
+		inputlo := readU64(p, 0) ^ (key64_024 ^ key64_032 + seed)
+		inputhi := readU64(p, ui(l)-8) ^ (key64_040 ^ key64_048 - seed)
+		folded := mulFold64(inputlo, inputhi)
+		return xxh3Avalanche(u64(l) + bits.ReverseBytes64(inputlo) + inputhi + folded)
 
-	case l <= 8:
+	case l >= 4:
 		input1 := readU32(p, 0)
 		input2 := readU32(p, ui(l)-4)
-		bitflip := key64_008 ^ key64_016 - seed
 		input64 := u64(input2) + u64(input1)<<32
-		keyed := input64 ^ bitflip
-		return rrmxmx(keyed, l)
+		keyed := input64 ^ (key64_008 ^ key64_016 - seed)
+		return rrmxmx(keyed, u64(l))
 
-	case l <= 16:
-		bitflip1 := key64_024 ^ key64_032 + seed
-		bitflip2 := key64_040 ^ key64_048 - seed
-		inputlo := readU64(p, 0) ^ bitflip1
-		inputhi := readU64(p, ui(l)-8) ^ bitflip2
-		return xxh3Avalanche(
-			l + bits.ReverseBytes64(inputlo) + inputhi + mulFold64(inputlo, inputhi),
-		)
+	case l == 3:
+		c12 := u64(readU16(p, 0))
+		c3 := u64(readU8(p, 2))
+		acc = c12<<16 + c3 + 3<<8
 
+	case l == 2:
+		c12 := u64(readU16(p, 0))
+		acc = c12*(1<<24+1)>>8 + 2<<8
+
+	case l == 1:
+		c1 := u64(readU8(p, 0))
+		acc = c1*(1<<24+1<<16+1) + 1<<8
+
+	case l == 0:
+		return 0x2d06800538d394c2 // xxh_avalanche(key64_056 ^ key64_064)
+	}
+
+	return xxhAvalancheSmall(acc)
+}
+
+func hashMed(p ptr, l int) (acc u64) {
+	const seed = 0
+
+	switch {
 	case l <= 128:
-		acc = l * prime64_1
+		acc = u64(l) * prime64_1
 
 		if l > 32 {
 			if l > 64 {
@@ -94,7 +106,7 @@ func hash(p ptr, l u64) (acc u64) {
 		return xxh3Avalanche(acc)
 
 	case l <= 240:
-		acc = l * prime64_1
+		acc = u64(l) * prime64_1
 
 		acc += mulFold64(
 			readU64(p, 0*16+0)^key64_000,
@@ -147,10 +159,10 @@ func hash(p ptr, l u64) (acc u64) {
 		return xxh3Avalanche(acc)
 
 	case avx2, sse2:
-		return hashVector(p, l)
+		return hashVector(p, u64(l))
 
 	default:
-		return hashLarge(p, l)
+		return hashLarge(p, u64(l))
 	}
 }
 
@@ -167,42 +179,42 @@ func hashLarge(p ptr, l u64) (acc u64) {
 		for i := 0; i < 16; i++ {
 			dv0 := readU64(p, 8*0)
 			dk0 := dv0 ^ readU64(k, 8*0)
-			accs[0^1] += dv0
+			accs[1] += dv0
 			accs[0] += (dk0 & 0xffffffff) * (dk0 >> 32)
 
 			dv1 := readU64(p, 8*1)
 			dk1 := dv1 ^ readU64(k, 8*1)
-			accs[1^1] += dv1
+			accs[0] += dv1
 			accs[1] += (dk1 & 0xffffffff) * (dk1 >> 32)
 
 			dv2 := readU64(p, 8*2)
 			dk2 := dv2 ^ readU64(k, 8*2)
-			accs[2^1] += dv2
+			accs[3] += dv2
 			accs[2] += (dk2 & 0xffffffff) * (dk2 >> 32)
 
 			dv3 := readU64(p, 8*3)
 			dk3 := dv3 ^ readU64(k, 8*3)
-			accs[3^1] += dv3
+			accs[2] += dv3
 			accs[3] += (dk3 & 0xffffffff) * (dk3 >> 32)
 
 			dv4 := readU64(p, 8*4)
 			dk4 := dv4 ^ readU64(k, 8*4)
-			accs[4^1] += dv4
+			accs[5] += dv4
 			accs[4] += (dk4 & 0xffffffff) * (dk4 >> 32)
 
 			dv5 := readU64(p, 8*5)
 			dk5 := dv5 ^ readU64(k, 8*5)
-			accs[5^1] += dv5
+			accs[4] += dv5
 			accs[5] += (dk5 & 0xffffffff) * (dk5 >> 32)
 
 			dv6 := readU64(p, 8*6)
 			dk6 := dv6 ^ readU64(k, 8*6)
-			accs[6^1] += dv6
+			accs[7] += dv6
 			accs[6] += (dk6 & 0xffffffff) * (dk6 >> 32)
 
 			dv7 := readU64(p, 8*7)
 			dk7 := dv7 ^ readU64(k, 8*7)
-			accs[7^1] += dv7
+			accs[6] += dv7
 			accs[7] += (dk7 & 0xffffffff) * (dk7 >> 32)
 
 			l -= _stripe
@@ -251,42 +263,42 @@ func hashLarge(p ptr, l u64) (acc u64) {
 		for i := u64(0); i < t; i++ {
 			dv0 := readU64(p, 8*0)
 			dk0 := dv0 ^ readU64(k, 8*0)
-			accs[0^1] += dv0
+			accs[1] += dv0
 			accs[0] += (dk0 & 0xffffffff) * (dk0 >> 32)
 
 			dv1 := readU64(p, 8*1)
 			dk1 := dv1 ^ readU64(k, 8*1)
-			accs[1^1] += dv1
+			accs[0] += dv1
 			accs[1] += (dk1 & 0xffffffff) * (dk1 >> 32)
 
 			dv2 := readU64(p, 8*2)
 			dk2 := dv2 ^ readU64(k, 8*2)
-			accs[2^1] += dv2
+			accs[3] += dv2
 			accs[2] += (dk2 & 0xffffffff) * (dk2 >> 32)
 
 			dv3 := readU64(p, 8*3)
 			dk3 := dv3 ^ readU64(k, 8*3)
-			accs[3^1] += dv3
+			accs[2] += dv3
 			accs[3] += (dk3 & 0xffffffff) * (dk3 >> 32)
 
 			dv4 := readU64(p, 8*4)
 			dk4 := dv4 ^ readU64(k, 8*4)
-			accs[4^1] += dv4
+			accs[5] += dv4
 			accs[4] += (dk4 & 0xffffffff) * (dk4 >> 32)
 
 			dv5 := readU64(p, 8*5)
 			dk5 := dv5 ^ readU64(k, 8*5)
-			accs[5^1] += dv5
+			accs[4] += dv5
 			accs[5] += (dk5 & 0xffffffff) * (dk5 >> 32)
 
 			dv6 := readU64(p, 8*6)
 			dk6 := dv6 ^ readU64(k, 8*6)
-			accs[6^1] += dv6
+			accs[7] += dv6
 			accs[6] += (dk6 & 0xffffffff) * (dk6 >> 32)
 
 			dv7 := readU64(p, 8*7)
 			dk7 := dv7 ^ readU64(k, 8*7)
-			accs[7^1] += dv7
+			accs[6] += dv7
 			accs[7] += (dk7 & 0xffffffff) * (dk7 >> 32)
 
 			l -= _stripe
@@ -300,42 +312,42 @@ func hashLarge(p ptr, l u64) (acc u64) {
 
 			dv0 := readU64(p, 8*0)
 			dk0 := dv0 ^ key64_121
-			accs[0^1] += dv0
+			accs[1] += dv0
 			accs[0] += (dk0 & 0xffffffff) * (dk0 >> 32)
 
 			dv1 := readU64(p, 8*1)
 			dk1 := dv1 ^ key64_129
-			accs[1^1] += dv1
+			accs[0] += dv1
 			accs[1] += (dk1 & 0xffffffff) * (dk1 >> 32)
 
 			dv2 := readU64(p, 8*2)
 			dk2 := dv2 ^ key64_137
-			accs[2^1] += dv2
+			accs[3] += dv2
 			accs[2] += (dk2 & 0xffffffff) * (dk2 >> 32)
 
 			dv3 := readU64(p, 8*3)
 			dk3 := dv3 ^ key64_145
-			accs[3^1] += dv3
+			accs[2] += dv3
 			accs[3] += (dk3 & 0xffffffff) * (dk3 >> 32)
 
 			dv4 := readU64(p, 8*4)
 			dk4 := dv4 ^ key64_153
-			accs[4^1] += dv4
+			accs[5] += dv4
 			accs[4] += (dk4 & 0xffffffff) * (dk4 >> 32)
 
 			dv5 := readU64(p, 8*5)
 			dk5 := dv5 ^ key64_161
-			accs[5^1] += dv5
+			accs[4] += dv5
 			accs[5] += (dk5 & 0xffffffff) * (dk5 >> 32)
 
 			dv6 := readU64(p, 8*6)
 			dk6 := dv6 ^ key64_169
-			accs[6^1] += dv6
+			accs[7] += dv6
 			accs[6] += (dk6 & 0xffffffff) * (dk6 >> 32)
 
 			dv7 := readU64(p, 8*7)
 			dk7 := dv7 ^ key64_177
-			accs[7^1] += dv7
+			accs[6] += dv7
 			accs[7] += (dk7 & 0xffffffff) * (dk7 >> 32)
 		}
 	}
