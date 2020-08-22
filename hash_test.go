@@ -19,7 +19,6 @@ func BenchmarkFixed(b *testing.B) {
 			}
 			runtime.KeepAlive(acc)
 		}
-
 		if i > 240 {
 			avx2Orig, sse2Orig, cleanup := override()
 			defer cleanup()

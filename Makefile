@@ -16,4 +16,4 @@ upstream/xxhash.o: upstream/xxhash.h
 	( cd upstream && make )
 
 _compat: _compat.c upstream/xxhash.o
-	gcc -o _compat _compat.c ./upstream/xxhash.o
+	$(CC) -o _compat _compat.c ./upstream/xxhash.o
