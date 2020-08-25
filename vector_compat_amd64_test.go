@@ -21,13 +21,13 @@ func TestVectorCompat(t *testing.T) {
 		defer cleanup()
 
 		avx2, sse2 = avx2Orig, false
-		avx2Sum := Hash(b)
+		avx2Sum := HashWithSeed(b, 42)
 
 		avx2, sse2 = false, sse2Orig
-		sse2Sum := Hash(b)
+		sse2Sum := HashWithSeed(b, 42)
 
 		avx2, sse2 = false, false
-		scalarSum := Hash(b)
+		scalarSum := HashWithSeed(b, 42)
 
 		if avx2Sum != sse2Sum || avx2Sum != scalarSum || sse2Sum != scalarSum {
 			t.Errorf("data  : %d", len(b))
