@@ -56,8 +56,10 @@ const (
 	key64_176 u64 = 0x280416958f3acb45
 	key64_184 u64 = 0x7e404bbbcafbd7af
 
-	key64_127 u64 = 0x7378d9c97e9fc831
-	key64_135 u64 = 0xebd33483acc5ea64
+	key64_103 u64 = 0x4f0bc7c7bbdcf93f
+	key64_111 u64 = 0x59b4cd4be0518a1d
+	key64_119 u64 = 0x7378d9c97e9fc831
+	key64_127 u64 = 0xebd33483acc5ea64
 
 	key64_121 u64 = 0xea647378d9c97e9f
 	key64_129 u64 = 0xc5c3ebd33483acc5
@@ -76,9 +78,20 @@ const (
 	key64_051 = 0x9035e08e2443f774
 	key64_059 = 0x52283c4c263a81e6
 	key64_067 = 0x65d088cb00c391bb
+
+	key64_117 = 0xd9c97e9fc83159b4
+	key64_125 = 0x3483acc5ea647378
+	key64_133 = 0xfaffa081c5c3ebd3
+	key64_141 = 0xb751dd0d17eb6313
+	key64_149 = 0x29265516d349daf0
+	key64_157 = 0x7d58be162b9e68d4
+	key64_165 = 0x7ad1b8f88ffca147
+	key64_173 = 0x958f3acb45ce31d0
 )
 
 const (
 	key32_000 u32 = 0xbe4ba423
 	key32_004 u32 = 0x396cfeb8
+	key32_008 u32 = 0x1cad21f7
+	key32_012 u32 = 0x2c81017c
 )
