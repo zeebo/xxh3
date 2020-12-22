@@ -1,6 +1,6 @@
 package xxh3
 
-func accum(accs *[8]u64, p, key ptr, l u64) {
+func accumScalar(accs *[8]u64, p, key ptr, l u64) {
 	for l > _block {
 		k := key
 
