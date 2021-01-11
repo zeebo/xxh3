@@ -2,12 +2,13 @@ package compare
 
 import (
 	"fmt"
-	"runtime"
 	"testing"
 
 	"github.com/cespare/xxhash"
 	"github.com/zeebo/xxh3"
 )
+
+var acc uint64
 
 func BenchmarkCompare(b *testing.B) {
 	sizes := []int{
@@ -20,15 +21,13 @@ func BenchmarkCompare(b *testing.B) {
 		for _, size := range sizes {
 			b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
 				b.SetBytes(int64(size))
-				var acc uint64
 				d := string(make([]byte, size))
 				b.ReportAllocs()
 				b.ResetTimer()
 
 				for i := 0; i < b.N; i++ {
-					acc = xxh3.HashString(d)
+					acc += xxh3.HashString(d)
 				}
-				runtime.KeepAlive(acc)
 			})
 		}
 	})
@@ -37,15 +36,13 @@ func BenchmarkCompare(b *testing.B) {
 		for _, size := range sizes {
 			b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
 				b.SetBytes(int64(size))
-				var acc uint64
 				d := string(make([]byte, size))
 				b.ReportAllocs()
 				b.ResetTimer()
 
 				for i := 0; i < b.N; i++ {
-					acc = xxhash.Sum64String(d)
+					acc += xxhash.Sum64String(d)
 				}
-				runtime.KeepAlive(acc)
 			})
 		}
 	})
