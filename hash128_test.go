@@ -23,6 +23,7 @@ func BenchmarkFixed128(b *testing.B) {
 		if i > 240 {
 			avx2Orig, sse2Orig, cleanup := override()
 			defer cleanup()
+
 			if avx2Orig {
 				avx2, sse2 = true, false
 				b.Run(fmt.Sprintf("%d-AVX2", i), bench)
