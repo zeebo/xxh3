@@ -10,7 +10,7 @@ func BenchmarkFixed128(b *testing.B) {
 	r := func(i int) {
 		bench := func(b *testing.B) {
 			b.SetBytes(int64(i))
-			var acc [2]uint64
+			var acc Uint128
 			d := string(make([]byte, i))
 			b.ResetTimer()
 
