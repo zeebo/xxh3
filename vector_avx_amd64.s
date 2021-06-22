@@ -12,13 +12,13 @@ TEXT ·accumAVX2(SB), NOSPLIT, $0-32
 	MOVQ         data+8(FP), CX
 	MOVQ         key+16(FP), DX
 	MOVQ         key+16(FP), BX
-	MOVQ         len+24(FP), BP
+	MOVQ         len+24(FP), SI
 	VMOVDQU      (AX), Y1
 	VMOVDQU      32(AX), Y2
 	VPBROADCASTQ prime_avx<>+0(SB), Y0
 
 accum_large:
-	CMPQ     BP, $0x00000400
+	CMPQ     SI, $0x00000400
 	JLE      accum
 	VMOVDQU  (CX), Y3
 	VMOVDQU  (DX), Y4
@@ -277,7 +277,7 @@ accum_large:
 	VPADDQ   Y2, Y3, Y2
 	VPADDQ   Y2, Y4, Y2
 	ADDQ     $0x00000400, CX
-	SUBQ     $0x00000400, BP
+	SUBQ     $0x00000400, SI
 	VPSRLQ   $0x2f, Y1, Y3
 	VPXOR    Y1, Y3, Y3
 	VPXOR    128(DX), Y3, Y3
@@ -297,7 +297,7 @@ accum_large:
 	JMP      accum_large
 
 accum:
-	CMPQ     BP, $0x40
+	CMPQ     SI, $0x40
 	JLE      finalize
 	VMOVDQU  (CX), Y0
 	VMOVDQU  (BX), Y3
@@ -316,15 +316,15 @@ accum:
 	VPADDQ   Y2, Y0, Y2
 	VPADDQ   Y2, Y3, Y2
 	ADDQ     $0x00000040, CX
-	SUBQ     $0x00000040, BP
+	SUBQ     $0x00000040, SI
 	ADDQ     $0x00000008, BX
 	JMP      accum
 
 finalize:
-	CMPQ     BP, $0x00
+	CMPQ     SI, $0x00
 	JE       return
 	SUBQ     $0x40, CX
-	ADDQ     BP, CX
+	ADDQ     SI, CX
 	VMOVDQU  (CX), Y0
 	VMOVDQU  121(DX), Y3
 	VPXOR    Y0, Y3, Y3
