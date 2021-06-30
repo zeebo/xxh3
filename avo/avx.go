@@ -28,18 +28,22 @@ func AVX() {
 	}
 
 	accum := func(doff, koff int, key Mem) {
-		for n, offset := range []int{0x00, 0x20} {
-			y0, y1, y2 := YMM(), YMM(), YMM()
+		y0, y1, y2, y10, y11, y12 := YMM(), YMM(), YMM(), YMM(), YMM(), YMM()
+		VMOVDQU(data.Offset(doff+0x00), y0)
+		VMOVDQU(data.Offset(doff+0x20), y10)
 
-			VMOVDQU(data.Offset(doff+offset), y0)
-			VMOVDQU(key.Offset(koff+offset), y1)
-			VPXOR(y0, y1, y1)
-			VPSHUFD(Imm(49), y1, y2)
-			VPMULUDQ(y1, y2, y1)
-			VPSHUFD(Imm(78), y0, y0)
-			VPADDQ(a[n], y0, a[n])
-			VPADDQ(a[n], y1, a[n])
-		}
+		VPXOR(key.Offset(koff+0x00), y0, y1)
+		VPXOR(key.Offset(koff+0x20), y10, y11)
+		VPSHUFD(Imm(49), y1, y2)
+		VPSHUFD(Imm(49), y11, y12)
+		VPMULUDQ(y1, y2, y1)
+		VPMULUDQ(y11, y12, y11)
+		VPSHUFD(Imm(78), y0, y0)
+		VPSHUFD(Imm(78), y10, y10)
+		VPADDQ(a[0], y0, a[0])
+		VPADDQ(a[0], y1, a[0])
+		VPADDQ(a[1], y10, a[1])
+		VPADDQ(a[1], y11, a[1])
 	}
 
 	scramble := func(koff int) {

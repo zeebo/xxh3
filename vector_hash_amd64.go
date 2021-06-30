@@ -6,9 +6,6 @@ import (
 	"golang.org/x/sys/cpu"
 )
 
-//go:generate bash -c "go run github.com/zeebo/xxh3/avo -avx > vector_avx_amd64.s"
-//go:generate bash -c "go run github.com/zeebo/xxh3/avo -sse > vector_sse_amd64.s"
-
 var (
 	avx2 = cpu.X86.HasAVX2
 	sse2 = cpu.X86.HasSSE2
