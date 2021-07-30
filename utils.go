@@ -9,8 +9,7 @@ import (
 // Uint128 is a 128 bit value.
 // The actual value can be thought of as u.Hi<<64 | u.Lo.
 type Uint128 struct {
-	Hi uint64
-	Lo uint64
+	Hi, Lo uint64
 }
 
 type (
