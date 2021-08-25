@@ -41,10 +41,10 @@ func AVX() {
 			JLE(LabelRef("accum"))
 
 			for i := 0; i < 16; i++ {
-				accum(data, a, 64*i, 8*i, key)
+				avx2accum(data, a, 64*i, 8*i, key)
 			}
 			advance(16)
-			scramble(prime, key, a, 8*16)
+			avx2scramble(prime, key, a, 8*16)
 
 			JMP(LabelRef("accum_large"))
 		}
@@ -54,7 +54,7 @@ func AVX() {
 			CMPQ(plen, Imm(64))
 			JLE(LabelRef("finalize"))
 
-			accum(data, a, 0, 0, skey)
+			avx2accum(data, a, 0, 0, skey)
 			advance(1)
 			ADDQ(U32(8), skey.Base)
 
@@ -69,7 +69,7 @@ func AVX() {
 			SUBQ(Imm(64), data.Base)
 			ADDQ(plen, data.Base)
 
-			accum(data, a, 0, 121, key)
+			avx2accum(data, a, 0, 121, key)
 		}
 
 		Label("return")
@@ -99,9 +99,9 @@ func AVX() {
 		Label("accum_block")
 		{
 			for i := 0; i < 16; i++ {
-				accum(data, a, 64*i, 8*i, key)
+				avx2accum(data, a, 64*i, 8*i, key)
 			}
-			scramble(prime, key, a, 8*16)
+			avx2scramble(prime, key, a, 8*16)
 		}
 
 		Label("return")
@@ -115,7 +115,7 @@ func AVX() {
 	Generate()
 }
 
-func scramble(prime VecVirtual, key Mem, a [2]VecVirtual, koff int) {
+func avx2scramble(prime VecVirtual, key Mem, a [2]VecVirtual, koff int) {
 	for n, offset := range []int{0x00, 0x20} {
 		y0, y1 := YMM(), YMM()
 
@@ -131,7 +131,7 @@ func scramble(prime VecVirtual, key Mem, a [2]VecVirtual, koff int) {
 	}
 }
 
-func accum(data Mem, a [2]VecVirtual, doff, koff int, key Mem) {
+func avx2accum(data Mem, a [2]VecVirtual, doff, koff int, key Mem) {
 	for n, offset := range []int{0x00, 0x20} {
 		y0, y1, y2 := YMM(), YMM(), YMM()
 
