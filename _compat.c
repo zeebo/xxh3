@@ -14,7 +14,7 @@ int main() {
         }
 
         uint64_t h = XXH3_64bits(buf, (size_t)i);
-        printf("0x%llx, ", h);
+        printf("0x%lx, ", h);
 
         if (i % 4 == 3) {
             printf("\n\t");
@@ -29,7 +29,7 @@ int main() {
         }
 
         XXH128_hash_t h = XXH3_128bits(buf, (size_t)i);
-        printf("{0x%llx, 0x%llx}, ", h.high64, h.low64);
+        printf("{0x%lx, 0x%lx}, ", h.high64, h.low64);
 
         if (i % 4 == 3) {
             printf("\n");

@@ -1,15 +1,15 @@
-.PHONY: all
-all: vector_avx_amd64.s vector_sse_amd64.s _compat
+.PHONY: all vet
+all: accum_vector_avx_amd64.s accum_vector_sse_amd64.s _compat
 
-vector_avx_amd64.s: avo/avx.go
-	cd ./avo; go run . -avx > ../vector_avx_amd64.s
+accum_vector_avx_amd64.s: avo/avx.go
+	cd ./avo; go run . -avx > ../accum_vector_avx_amd64.s
 
-vector_sse_amd64.s: avo/sse.go
-	cd ./avo; go run . -sse > ../vector_sse_amd64.s
+accum_vector_sse_amd64.s: avo/sse.go
+	cd ./avo; go run . -sse > ../accum_vector_sse_amd64.s
 
 clean:
-	rm vector_avx_amd64.s
-	rm vector_sse_amd64.s
+	rm accum_vector_avx_amd64.s
+	rm accum_vector_sse_amd64.s
 	rm _compat
 
 upstream/xxhash.o: upstream/xxhash.h
@@ -17,3 +17,8 @@ upstream/xxhash.o: upstream/xxhash.h
 
 _compat: _compat.c upstream/xxhash.o
 	gcc -o _compat _compat.c ./upstream/xxhash.o
+
+vet:
+	GOARCH=amd64 go vet
+	GOARCH=386 go vet
+	GOARCH=arm go vet

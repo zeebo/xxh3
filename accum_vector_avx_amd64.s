@@ -346,3 +346,288 @@ return:
 	VMOVDQU Y1, (AX)
 	VMOVDQU Y2, 32(AX)
 	RET
+
+// func accumBlockAVX2(acc *[8]uint64, data *byte, key *byte)
+// Requires: AVX, AVX2
+TEXT ·accumBlockAVX2(SB), NOSPLIT, $0-24
+	MOVQ         acc+0(FP), AX
+	MOVQ         data+8(FP), CX
+	MOVQ         key+16(FP), DX
+	VMOVDQU      (AX), Y1
+	VMOVDQU      32(AX), Y2
+	VPBROADCASTQ prime_avx<>+0(SB), Y0
+	VMOVDQU      (CX), Y3
+	VMOVDQU      (DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      32(CX), Y3
+	VMOVDQU      32(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VMOVDQU      64(CX), Y3
+	VMOVDQU      8(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      96(CX), Y3
+	VMOVDQU      40(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VMOVDQU      128(CX), Y3
+	VMOVDQU      16(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      160(CX), Y3
+	VMOVDQU      48(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VMOVDQU      192(CX), Y3
+	VMOVDQU      24(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      224(CX), Y3
+	VMOVDQU      56(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VMOVDQU      256(CX), Y3
+	VMOVDQU      32(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      288(CX), Y3
+	VMOVDQU      64(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VMOVDQU      320(CX), Y3
+	VMOVDQU      40(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      352(CX), Y3
+	VMOVDQU      72(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VMOVDQU      384(CX), Y3
+	VMOVDQU      48(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      416(CX), Y3
+	VMOVDQU      80(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VMOVDQU      448(CX), Y3
+	VMOVDQU      56(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      480(CX), Y3
+	VMOVDQU      88(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VMOVDQU      512(CX), Y3
+	VMOVDQU      64(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      544(CX), Y3
+	VMOVDQU      96(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VMOVDQU      576(CX), Y3
+	VMOVDQU      72(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      608(CX), Y3
+	VMOVDQU      104(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VMOVDQU      640(CX), Y3
+	VMOVDQU      80(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      672(CX), Y3
+	VMOVDQU      112(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VMOVDQU      704(CX), Y3
+	VMOVDQU      88(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      736(CX), Y3
+	VMOVDQU      120(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VMOVDQU      768(CX), Y3
+	VMOVDQU      96(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      800(CX), Y3
+	VMOVDQU      128(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VMOVDQU      832(CX), Y3
+	VMOVDQU      104(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      864(CX), Y3
+	VMOVDQU      136(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VMOVDQU      896(CX), Y3
+	VMOVDQU      112(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      928(CX), Y3
+	VMOVDQU      144(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VMOVDQU      960(CX), Y3
+	VMOVDQU      120(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPADDQ       Y1, Y4, Y1
+	VMOVDQU      992(CX), Y3
+	VMOVDQU      152(DX), Y4
+	VPXOR        Y3, Y4, Y4
+	VPSHUFD      $0x31, Y4, Y5
+	VPMULUDQ     Y4, Y5, Y4
+	VPSHUFD      $0x4e, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VPADDQ       Y2, Y4, Y2
+	VPSRLQ       $0x2f, Y1, Y3
+	VPXOR        Y1, Y3, Y3
+	VPXOR        128(DX), Y3, Y3
+	VPMULUDQ     Y0, Y3, Y1
+	VPSHUFD      $0xf5, Y3, Y3
+	VPMULUDQ     Y0, Y3, Y3
+	VPSLLQ       $0x20, Y3, Y3
+	VPADDQ       Y1, Y3, Y1
+	VPSRLQ       $0x2f, Y2, Y3
+	VPXOR        Y2, Y3, Y3
+	VPXOR        160(DX), Y3, Y3
+	VPMULUDQ     Y0, Y3, Y2
+	VPSHUFD      $0xf5, Y3, Y3
+	VPMULUDQ     Y0, Y3, Y3
+	VPSLLQ       $0x20, Y3, Y3
+	VPADDQ       Y2, Y3, Y2
+	VMOVDQU      Y1, (AX)
+	VMOVDQU      Y2, 32(AX)
+	RET

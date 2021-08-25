@@ -161,3 +161,28 @@ func hashMed(p ptr, l int) (acc u64) {
 		return hashLarge(p, u64(l))
 	}
 }
+
+func hashLarge(p ptr, l u64) (acc u64) {
+	acc = l * prime64_1
+
+	accs := [8]u64{
+		prime32_3, prime64_1, prime64_2, prime64_3,
+		prime64_4, prime32_2, prime64_5, prime32_1,
+	}
+
+	if hasAVX2 {
+		accumAVX2(&accs, p, key, l)
+	} else if hasSSE2 {
+		accumSSE(&accs, p, key, l)
+	} else {
+		accumScalar(&accs, p, key, l)
+	}
+
+	// merge accs
+	acc += mulFold64(accs[0]^key64_011, accs[1]^key64_019)
+	acc += mulFold64(accs[2]^key64_027, accs[3]^key64_035)
+	acc += mulFold64(accs[4]^key64_043, accs[5]^key64_051)
+	acc += mulFold64(accs[6]^key64_059, accs[7]^key64_067)
+
+	return xxh3Avalanche(acc)
+}

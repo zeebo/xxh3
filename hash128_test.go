@@ -21,22 +21,15 @@ func BenchmarkFixed128(b *testing.B) {
 		}
 
 		if i > 240 {
-			avx2Orig, sse2Orig, cleanup := override()
-			defer cleanup()
-
-			if avx2Orig {
-				avx2, sse2 = true, false
-				b.Run(fmt.Sprintf("%d-AVX2", i), bench)
+			if hasAVX2 {
+				withAVX2(func() { b.Run(fmt.Sprintf("%d-AVX2", i), bench) })
 			}
-			if sse2Orig {
-				avx2, sse2 = false, true
-				b.Run(fmt.Sprintf("%d-SSE2", i), bench)
+			if hasSSE2 {
+				withSSE2(func() { b.Run(fmt.Sprintf("%d-SSE2", i), bench) })
 			}
-
-			avx2, sse2 = false, false
 		}
 
-		b.Run(fmt.Sprintf("%d", i), bench)
+		withGeneric(func() { b.Run(fmt.Sprintf("%d", i), bench) })
 	}
 
 	r(0)

@@ -2,13 +2,6 @@ package xxh3
 
 import "testing"
 
-func override() (bool, bool, func()) {
-	avx2Orig, sse2Orig := avx2, sse2
-	return avx2Orig, sse2Orig, func() {
-		avx2, sse2 = avx2Orig, sse2Orig
-	}
-}
-
 func TestVectorCompat(t *testing.T) {
 	check := func(b []byte) {
 		t.Helper()
@@ -17,23 +10,17 @@ func TestVectorCompat(t *testing.T) {
 			b[i] = byte(i)
 		}
 
-		avx2Orig, sse2Orig, cleanup := override()
-		defer cleanup()
+		var avx2Sum, sse2Sum, genericSum uint64
 
-		avx2, sse2 = avx2Orig, false
-		avx2Sum := Hash(b)
+		withAVX2(func() { avx2Sum = Hash(b) })
+		withSSE2(func() { sse2Sum = Hash(b) })
+		withGeneric(func() { genericSum = Hash(b) })
 
-		avx2, sse2 = false, sse2Orig
-		sse2Sum := Hash(b)
-
-		avx2, sse2 = false, false
-		scalarSum := Hash(b)
-
-		if avx2Sum != sse2Sum || avx2Sum != scalarSum || sse2Sum != scalarSum {
+		if avx2Sum != sse2Sum || avx2Sum != genericSum || sse2Sum != genericSum {
 			t.Errorf("data  : %d", len(b))
 			t.Errorf("avx2  : %016x", avx2Sum)
 			t.Errorf("sse2  : %016x", sse2Sum)
-			t.Errorf("scalar: %016x", scalarSum)
+			t.Errorf("scalar: %016x", genericSum)
 			t.FailNow()
 		}
 	}

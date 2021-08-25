@@ -12,6 +12,16 @@ type Uint128 struct {
 	Hi, Lo uint64
 }
 
+// Bytes returns the uint128 as an array of bytes in canonical form (big-endian encoded).
+func (u Uint128) Bytes() [16]byte {
+	return [16]byte{
+		byte(u.Hi >> 0x38), byte(u.Hi >> 0x30), byte(u.Hi >> 0x28), byte(u.Hi >> 0x20),
+		byte(u.Hi >> 0x18), byte(u.Hi >> 0x10), byte(u.Hi >> 0x08), byte(u.Hi),
+		byte(u.Lo >> 0x38), byte(u.Lo >> 0x30), byte(u.Lo >> 0x28), byte(u.Lo >> 0x20),
+		byte(u.Lo >> 0x18), byte(u.Lo >> 0x10), byte(u.Lo >> 0x08), byte(u.Lo),
+	}
+}
+
 type (
 	ptr = unsafe.Pointer
 	ui  = uintptr
