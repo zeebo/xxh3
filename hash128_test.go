@@ -31,7 +31,6 @@ func BenchmarkFixed128(b *testing.B) {
 
 		withGeneric(func() { b.Run(fmt.Sprintf("%d", i), bench) })
 	}
-
 	r(0)
 	r(1)
 	r(2)
@@ -55,4 +54,7 @@ func BenchmarkFixed128(b *testing.B) {
 	r(1024)
 	r(8192)
 	r(100 * 1024)
+	r(1000 * 1024)
+	r(10000 * 1024)
+	r(100000 * 1024)
 }
