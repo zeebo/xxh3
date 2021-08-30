@@ -345,6 +345,7 @@ finalize:
 return:
 	VMOVDQU Y1, (AX)
 	VMOVDQU Y2, 32(AX)
+	VZEROUPPER
 	RET
 
 // func accumBlockAVX2(acc *[8]uint64, data *byte, key *byte)
@@ -630,4 +631,5 @@ TEXT ·accumBlockAVX2(SB), NOSPLIT, $0-24
 	VPADDQ       Y2, Y3, Y2
 	VMOVDQU      Y1, (AX)
 	VMOVDQU      Y2, 32(AX)
+	VZEROUPPER
 	RET

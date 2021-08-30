@@ -76,6 +76,7 @@ func AVX() {
 		{
 			VMOVDQU(a[0], acc.Offset(0x00))
 			VMOVDQU(a[1], acc.Offset(0x20))
+			VZEROUPPER()
 			RET()
 		}
 	}
@@ -108,6 +109,7 @@ func AVX() {
 		{
 			VMOVDQU(a[0], acc.Offset(0x00))
 			VMOVDQU(a[1], acc.Offset(0x20))
+			VZEROUPPER()
 			RET()
 		}
 	}
