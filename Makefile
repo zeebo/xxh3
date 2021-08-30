@@ -1,11 +1,8 @@
 .PHONY: all vet
-all: accum_vector_avx_amd64.s accum_vector_sse_amd64.s _compat
+all: genasm _compat
 
-accum_vector_avx_amd64.s: avo/avx.go
-	cd ./avo; go run . -avx > ../accum_vector_avx_amd64.s
-
-accum_vector_sse_amd64.s: avo/sse.go
-	cd ./avo; go run . -sse > ../accum_vector_sse_amd64.s
+genasm: avo/avx.go avo/sse.go
+	cd ./avo; go generate gen.go
 
 clean:
 	rm accum_vector_avx_amd64.s
