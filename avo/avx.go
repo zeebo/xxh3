@@ -10,7 +10,7 @@ func AVX() {
 	// Lay out the prime constant in memory, copy it so no unpack is needed.
 	primeData := GLOBL("prime_avx", RODATA|NOPTR)
 	for i := 0; i < 32; i += 8 {
-		DATA(i, U32(2654435761))
+		DATA(i, U64(2654435761))
 	}
 
 	{

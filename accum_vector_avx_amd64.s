@@ -2,11 +2,11 @@
 
 #include "textflag.h"
 
-DATA prime_avx<>+0(SB)/4, $0x9e3779b1
-DATA prime_avx<>+8(SB)/4, $0x9e3779b1
-DATA prime_avx<>+16(SB)/4, $0x9e3779b1
-DATA prime_avx<>+24(SB)/4, $0x9e3779b1
-GLOBL prime_avx<>(SB), RODATA|NOPTR, $28
+DATA prime_avx<>+0(SB)/8, $0x000000009e3779b1
+DATA prime_avx<>+8(SB)/8, $0x000000009e3779b1
+DATA prime_avx<>+16(SB)/8, $0x000000009e3779b1
+DATA prime_avx<>+24(SB)/8, $0x000000009e3779b1
+GLOBL prime_avx<>(SB), RODATA|NOPTR, $32
 
 // func accumAVX2(acc *[8]uint64, data *byte, key *byte, len uint64)
 // Requires: AVX, AVX2, MMX+
