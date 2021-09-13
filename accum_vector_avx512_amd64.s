@@ -18,8 +18,7 @@ TEXT ·accumAVX512(SB), NOSPLIT, $0-32
 	MOVQ      acc+0(FP), AX
 	MOVQ      data+8(FP), CX
 	MOVQ      key+16(FP), DX
-	MOVQ      key+16(FP), BX
-	MOVQ      len+24(FP), BP
+	MOVQ      len+24(FP), BX
 	VMOVDQU64 (DX), Z2
 	VMOVDQU64 8(DX), Z3
 	VMOVDQU64 16(DX), Z4
@@ -42,7 +41,7 @@ TEXT ·accumAVX512(SB), NOSPLIT, $0-32
 	VMOVDQU64 121(DX), Z19
 
 accum_large:
-	CMPQ       BP, $0x00000400
+	CMPQ       BX, $0x00000400
 	JLE        accum
 	VMOVDQU64  (CX), Z20
 	PREFETCHT0 1024(CX)
@@ -173,7 +172,7 @@ accum_large:
 	VPADDQ     Z1, Z20, Z1
 	VPADDQ     Z1, Z21, Z1
 	ADDQ       $0x00000400, CX
-	SUBQ       $0x00000400, BP
+	SUBQ       $0x00000400, BX
 	VPSRLQ     $0x2f, Z1, Z20
 	VPTERNLOGD $0x96, Z1, Z18, Z20
 	VPMULUDQ   Z0, Z20, Z1
@@ -184,25 +183,188 @@ accum_large:
 	JMP        accum_large
 
 accum:
-	CMPQ      BP, $0x40
+	CMPQ      BX, $0x40
 	JLE       finalize
 	VMOVDQU64 (CX), Z0
-	VPXORD    Z2, Z0, Z3
-	VPSHUFD   $0x31, Z3, Z4
-	VPMULUDQ  Z3, Z4, Z3
+	VPXORD    Z2, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z18
+	VPMULUDQ  Z2, Z18, Z2
 	VPSHUFD   $0x4e, Z0, Z0
 	VPADDQ    Z1, Z0, Z1
-	VPADDQ    Z1, Z3, Z1
+	VPADDQ    Z1, Z2, Z1
 	ADDQ      $0x00000040, CX
-	SUBQ      $0x00000040, BP
-	ADDQ      $0x00000008, BX
-	JMP       accum
+	SUBQ      $0x00000040, BX
+	CMPQ      BX, $0x40
+	JLE       finalize
+	VMOVDQU64 (CX), Z0
+	VPXORD    Z3, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z3
+	VPMULUDQ  Z2, Z3, Z2
+	VPSHUFD   $0x4e, Z0, Z0
+	VPADDQ    Z1, Z0, Z1
+	VPADDQ    Z1, Z2, Z1
+	ADDQ      $0x00000040, CX
+	SUBQ      $0x00000040, BX
+	CMPQ      BX, $0x40
+	JLE       finalize
+	VMOVDQU64 (CX), Z0
+	VPXORD    Z4, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z3
+	VPMULUDQ  Z2, Z3, Z2
+	VPSHUFD   $0x4e, Z0, Z0
+	VPADDQ    Z1, Z0, Z1
+	VPADDQ    Z1, Z2, Z1
+	ADDQ      $0x00000040, CX
+	SUBQ      $0x00000040, BX
+	CMPQ      BX, $0x40
+	JLE       finalize
+	VMOVDQU64 (CX), Z0
+	VPXORD    Z5, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z3
+	VPMULUDQ  Z2, Z3, Z2
+	VPSHUFD   $0x4e, Z0, Z0
+	VPADDQ    Z1, Z0, Z1
+	VPADDQ    Z1, Z2, Z1
+	ADDQ      $0x00000040, CX
+	SUBQ      $0x00000040, BX
+	CMPQ      BX, $0x40
+	JLE       finalize
+	VMOVDQU64 (CX), Z0
+	VPXORD    Z6, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z3
+	VPMULUDQ  Z2, Z3, Z2
+	VPSHUFD   $0x4e, Z0, Z0
+	VPADDQ    Z1, Z0, Z1
+	VPADDQ    Z1, Z2, Z1
+	ADDQ      $0x00000040, CX
+	SUBQ      $0x00000040, BX
+	CMPQ      BX, $0x40
+	JLE       finalize
+	VMOVDQU64 (CX), Z0
+	VPXORD    Z7, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z3
+	VPMULUDQ  Z2, Z3, Z2
+	VPSHUFD   $0x4e, Z0, Z0
+	VPADDQ    Z1, Z0, Z1
+	VPADDQ    Z1, Z2, Z1
+	ADDQ      $0x00000040, CX
+	SUBQ      $0x00000040, BX
+	CMPQ      BX, $0x40
+	JLE       finalize
+	VMOVDQU64 (CX), Z0
+	VPXORD    Z8, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z3
+	VPMULUDQ  Z2, Z3, Z2
+	VPSHUFD   $0x4e, Z0, Z0
+	VPADDQ    Z1, Z0, Z1
+	VPADDQ    Z1, Z2, Z1
+	ADDQ      $0x00000040, CX
+	SUBQ      $0x00000040, BX
+	CMPQ      BX, $0x40
+	JLE       finalize
+	VMOVDQU64 (CX), Z0
+	VPXORD    Z9, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z3
+	VPMULUDQ  Z2, Z3, Z2
+	VPSHUFD   $0x4e, Z0, Z0
+	VPADDQ    Z1, Z0, Z1
+	VPADDQ    Z1, Z2, Z1
+	ADDQ      $0x00000040, CX
+	SUBQ      $0x00000040, BX
+	CMPQ      BX, $0x40
+	JLE       finalize
+	VMOVDQU64 (CX), Z0
+	VPXORD    Z10, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z3
+	VPMULUDQ  Z2, Z3, Z2
+	VPSHUFD   $0x4e, Z0, Z0
+	VPADDQ    Z1, Z0, Z1
+	VPADDQ    Z1, Z2, Z1
+	ADDQ      $0x00000040, CX
+	SUBQ      $0x00000040, BX
+	CMPQ      BX, $0x40
+	JLE       finalize
+	VMOVDQU64 (CX), Z0
+	VPXORD    Z11, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z3
+	VPMULUDQ  Z2, Z3, Z2
+	VPSHUFD   $0x4e, Z0, Z0
+	VPADDQ    Z1, Z0, Z1
+	VPADDQ    Z1, Z2, Z1
+	ADDQ      $0x00000040, CX
+	SUBQ      $0x00000040, BX
+	CMPQ      BX, $0x40
+	JLE       finalize
+	VMOVDQU64 (CX), Z0
+	VPXORD    Z12, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z3
+	VPMULUDQ  Z2, Z3, Z2
+	VPSHUFD   $0x4e, Z0, Z0
+	VPADDQ    Z1, Z0, Z1
+	VPADDQ    Z1, Z2, Z1
+	ADDQ      $0x00000040, CX
+	SUBQ      $0x00000040, BX
+	CMPQ      BX, $0x40
+	JLE       finalize
+	VMOVDQU64 (CX), Z0
+	VPXORD    Z13, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z3
+	VPMULUDQ  Z2, Z3, Z2
+	VPSHUFD   $0x4e, Z0, Z0
+	VPADDQ    Z1, Z0, Z1
+	VPADDQ    Z1, Z2, Z1
+	ADDQ      $0x00000040, CX
+	SUBQ      $0x00000040, BX
+	CMPQ      BX, $0x40
+	JLE       finalize
+	VMOVDQU64 (CX), Z0
+	VPXORD    Z14, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z3
+	VPMULUDQ  Z2, Z3, Z2
+	VPSHUFD   $0x4e, Z0, Z0
+	VPADDQ    Z1, Z0, Z1
+	VPADDQ    Z1, Z2, Z1
+	ADDQ      $0x00000040, CX
+	SUBQ      $0x00000040, BX
+	CMPQ      BX, $0x40
+	JLE       finalize
+	VMOVDQU64 (CX), Z0
+	VPXORD    Z15, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z3
+	VPMULUDQ  Z2, Z3, Z2
+	VPSHUFD   $0x4e, Z0, Z0
+	VPADDQ    Z1, Z0, Z1
+	VPADDQ    Z1, Z2, Z1
+	ADDQ      $0x00000040, CX
+	SUBQ      $0x00000040, BX
+	CMPQ      BX, $0x40
+	JLE       finalize
+	VMOVDQU64 (CX), Z0
+	VPXORD    Z16, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z3
+	VPMULUDQ  Z2, Z3, Z2
+	VPSHUFD   $0x4e, Z0, Z0
+	VPADDQ    Z1, Z0, Z1
+	VPADDQ    Z1, Z2, Z1
+	ADDQ      $0x00000040, CX
+	SUBQ      $0x00000040, BX
+	CMPQ      BX, $0x40
+	JLE       finalize
+	VMOVDQU64 (CX), Z0
+	VPXORD    Z17, Z0, Z2
+	VPSHUFD   $0x31, Z2, Z3
+	VPMULUDQ  Z2, Z3, Z2
+	VPSHUFD   $0x4e, Z0, Z0
+	VPADDQ    Z1, Z0, Z1
+	VPADDQ    Z1, Z2, Z1
+	ADDQ      $0x00000040, CX
+	SUBQ      $0x00000040, BX
 
 finalize:
-	CMPQ      BP, $0x00
+	CMPQ      BX, $0x00
 	JE        return
 	SUBQ      $0x40, CX
-	ADDQ      BP, CX
+	ADDQ      BX, CX
 	VMOVDQU64 (CX), Z0
 	VPXORD    Z19, Z0, Z2
 	VPSHUFD   $0x31, Z2, Z3
