@@ -6,18 +6,28 @@ import (
 	"testing"
 )
 
-func BenchmarkFixed(b *testing.B) {
+func BenchmarkFixed64(b *testing.B) {
 	r := func(i int) {
 		bench := func(b *testing.B) {
-			b.SetBytes(int64(i))
 			var acc uint64
 			d := string(make([]byte, i))
-			b.ResetTimer()
+			b.Run("default", func(b *testing.B) {
+				b.SetBytes(int64(i))
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					acc = HashString(d)
+				}
+				runtime.KeepAlive(acc)
+			})
+			b.Run("seed", func(b *testing.B) {
+				b.SetBytes(int64(i))
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					acc = HashStringSeed(d, 42)
+				}
+				runtime.KeepAlive(acc)
+			})
 
-			for i := 0; i < b.N; i++ {
-				acc = HashString(d)
-			}
-			runtime.KeepAlive(acc)
 		}
 
 		if i > 240 {
