@@ -10,14 +10,16 @@ func TestVectorCompat(t *testing.T) {
 			b[i] = byte(i)
 		}
 
-		var avx2Sum, sse2Sum, genericSum uint64
+		var avx512Sum, avx2Sum, sse2Sum, genericSum uint64
 
+		withAVX512(func() { avx512Sum = Hash(b) })
 		withAVX2(func() { avx2Sum = Hash(b) })
 		withSSE2(func() { sse2Sum = Hash(b) })
 		withGeneric(func() { genericSum = Hash(b) })
 
-		if avx2Sum != sse2Sum || avx2Sum != genericSum || sse2Sum != genericSum {
+		if avx2Sum != sse2Sum || avx2Sum != genericSum || sse2Sum != genericSum || avx512Sum != genericSum {
 			t.Errorf("data  : %d", len(b))
+			t.Errorf("avx512: %016x", avx512Sum)
 			t.Errorf("avx2  : %016x", avx2Sum)
 			t.Errorf("sse2  : %016x", sse2Sum)
 			t.Errorf("scalar: %016x", genericSum)
