@@ -1,5 +1,8 @@
 package xxh3
 
+// avx512Switch is the size at which the avx512 code is used.
+const avx512Switch = 8 << 10
+
 func accumScalar(accs *[8]u64, p, key ptr, l u64) {
 	for l > _block {
 		k := key

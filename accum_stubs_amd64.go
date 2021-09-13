@@ -3,16 +3,20 @@ package xxh3
 import (
 	"unsafe"
 
-	"golang.org/x/sys/cpu"
+	"github.com/klauspost/cpuid/v2"
 )
 
 var (
-	hasAVX2 = cpu.X86.HasAVX2
-	hasSSE2 = cpu.X86.HasSSE2
+	hasAVX2   = cpuid.CPU.Has(cpuid.AVX2)
+	hasSSE2   = cpuid.CPU.Has(cpuid.SSE2) // Always true on amd64
+	hasAVX512 = cpuid.CPU.Has(cpuid.AVX512F)
 )
 
 //go:noescape
 func accumAVX2(acc *[8]u64, data, key unsafe.Pointer, len u64)
+
+//go:noescape
+func accumAVX512(acc *[8]u64, data, key unsafe.Pointer, len u64)
 
 //go:noescape
 func accumSSE(acc *[8]u64, data, key unsafe.Pointer, len u64)
