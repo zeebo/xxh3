@@ -27,6 +27,10 @@ func TestVectorCompat(t *testing.T) {
 		}
 	}
 
+	t.Logf("avx512: %v", hasAVX512)
+	t.Logf("avx2: %v", hasAVX2)
+	t.Logf("sse2: %v", hasSSE2)
+
 	for _, n := range []int{
 		0, 1,
 		63, 64, 65,
@@ -46,7 +50,11 @@ func TestVectorCompat(t *testing.T) {
 		895, 896, 897,
 		959, 960, 961,
 		1023, 1024, 1025,
+		avx512Switch, avx512Switch + 1,
+		4932, 10233, 19238,
+		30000, 32 << 10, 1 + 32<<10,
 		100 * 1024,
+		1e6, 1e7, 1e8,
 	} {
 		check(make([]byte, n))
 	}
