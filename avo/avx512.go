@@ -21,7 +21,6 @@ func AVX512() {
 		acc := Mem{Base: Load(Param("acc"), GP64())}
 		data := Mem{Base: Load(Param("data"), GP64())}
 		key := Mem{Base: Load(Param("key"), GP64())}
-		skey := Mem{Base: Load(Param("key"), GP64())}
 		plen := Load(Param("len"), GP64())
 		prime := ZMM()
 		a := ZMM()
@@ -62,14 +61,14 @@ func AVX512() {
 
 		Label("accum")
 		{
-			CMPQ(plen, Imm(64))
-			JLE(LabelRef("finalize"))
+			// Unroll loop so we can use already loaded keys.
+			for i := 0; i < 1024/64; i++ {
+				CMPQ(plen, Imm(64))
+				JLE(LabelRef("finalize"))
 
-			avx512accum(data, a, 0, keyReg[0], false)
-			advance(1)
-			ADDQ(U32(8), skey.Base)
-
-			JMP(LabelRef("accum"))
+				avx512accum(data, a, 0, keyReg[i], false)
+				advance(1)
+			}
 		}
 
 		Label("finalize")
