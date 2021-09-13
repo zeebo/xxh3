@@ -7,10 +7,12 @@ import (
 
 // Hasher implements the hash.Hash interface
 type Hasher struct {
-	acc [8]u64
-	blk u64
-	len u64
-	buf [_block + _stripe]byte
+	acc  [8]u64
+	blk  u64
+	len  u64
+	key  ptr
+	buf  [_block + _stripe]byte
+	seed u64
 }
 
 var (
@@ -21,7 +23,23 @@ var (
 // New returns a new Hasher that implements the hash.Hash interface.
 func New() *Hasher {
 	var h Hasher
+	h.key = key
 	h.Reset()
+	return &h
+}
+
+// NewSeed returns a new Hasher that implements the hash.Hash interface.
+func NewSeed(seed uint64) *Hasher {
+	var h Hasher
+	h.Reset()
+	h.seed = seed
+	h.key = key
+
+	// Only initiate once, not on reset.
+	if seed != 0 {
+		h.key = ptr(&[secret_size]byte{})
+		initSecret(h.key, seed)
+	}
 	return &h
 }
 
@@ -81,11 +99,11 @@ func (h *Hasher) updateString(buf string) {
 		}
 
 		if hasAVX2 {
-			accumBlockAVX2(&h.acc, ptr(&h.buf), key)
+			accumBlockAVX2(&h.acc, ptr(&h.buf), h.key)
 		} else if hasSSE2 {
-			accumBlockSSE(&h.acc, ptr(&h.buf), key)
+			accumBlockSSE(&h.acc, ptr(&h.buf), h.key)
 		} else {
-			accumBlockScalar(&h.acc, ptr(&h.buf), key)
+			accumBlockScalar(&h.acc, ptr(&h.buf), h.key)
 		}
 
 		h.blk++
@@ -97,7 +115,10 @@ func (h *Hasher) updateString(buf string) {
 // Sum64 returns the 64-bit hash of the written data.
 func (h *Hasher) Sum64() uint64 {
 	if h.blk == 0 {
-		return Hash(h.buf[:h.len])
+		if h.seed == 0 {
+			return Hash(h.buf[:h.len])
+		}
+		return HashSeed(h.buf[:h.len], h.seed)
 	}
 
 	l := h.blk*_block + h.len
@@ -107,26 +128,37 @@ func (h *Hasher) Sum64() uint64 {
 	if h.len > 0 {
 		// We are only ever doing 1 block here, so no avx512.
 		if hasAVX2 {
-			accumAVX2(&accs, ptr(&h.buf[0]), key, h.len)
+			accumAVX2(&accs, ptr(&h.buf[0]), h.key, h.len)
 		} else if hasSSE2 {
-			accumSSE(&accs, ptr(&h.buf[0]), key, h.len)
+			accumSSE(&accs, ptr(&h.buf[0]), h.key, h.len)
 		} else {
-			accumScalar(&accs, ptr(&h.buf[0]), key, h.len)
+			accumScalar(&accs, ptr(&h.buf[0]), h.key, h.len)
 		}
 	}
 
-	acc += mulFold64(accs[0]^key64_011, accs[1]^key64_019)
-	acc += mulFold64(accs[2]^key64_027, accs[3]^key64_035)
-	acc += mulFold64(accs[4]^key64_043, accs[5]^key64_051)
-	acc += mulFold64(accs[6]^key64_059, accs[7]^key64_067)
+	if h.seed == 0 {
+		acc += mulFold64(accs[0]^key64_011, accs[1]^key64_019)
+		acc += mulFold64(accs[2]^key64_027, accs[3]^key64_035)
+		acc += mulFold64(accs[4]^key64_043, accs[5]^key64_051)
+		acc += mulFold64(accs[6]^key64_059, accs[7]^key64_067)
+	} else {
+		secret := h.key
+		acc += mulFold64(accs[0]^readU64(secret, 11), accs[1]^readU64(secret, 19))
+		acc += mulFold64(accs[2]^readU64(secret, 27), accs[3]^readU64(secret, 35))
+		acc += mulFold64(accs[4]^readU64(secret, 43), accs[5]^readU64(secret, 51))
+		acc += mulFold64(accs[6]^readU64(secret, 59), accs[7]^readU64(secret, 67))
+	}
 
 	return xxh3Avalanche(acc)
 }
 
-// Sum64 returns the 128-bit hash of the written data.
+// Sum128 returns the 128-bit hash of the written data.
 func (h *Hasher) Sum128() Uint128 {
 	if h.blk == 0 {
-		return Hash128(h.buf[:h.len])
+		if h.seed == 0 {
+			return Hash128(h.buf[:h.len])
+		}
+		return Hash128Seed(h.buf[:h.len], h.seed)
 	}
 
 	l := h.blk*_block + h.len
@@ -136,25 +168,40 @@ func (h *Hasher) Sum128() Uint128 {
 	if h.len > 0 {
 		// We are only ever doing 1 block here, so no avx512.
 		if hasAVX2 {
-			accumAVX2(&accs, ptr(&h.buf[0]), key, h.len)
+			accumAVX2(&accs, ptr(&h.buf[0]), h.key, h.len)
 		} else if hasSSE2 {
-			accumSSE(&accs, ptr(&h.buf[0]), key, h.len)
+			accumSSE(&accs, ptr(&h.buf[0]), h.key, h.len)
 		} else {
-			accumScalar(&accs, ptr(&h.buf[0]), key, h.len)
+			accumScalar(&accs, ptr(&h.buf[0]), h.key, h.len)
 		}
 	}
 
-	acc.Lo += mulFold64(accs[0]^key64_011, accs[1]^key64_019)
-	acc.Lo += mulFold64(accs[2]^key64_027, accs[3]^key64_035)
-	acc.Lo += mulFold64(accs[4]^key64_043, accs[5]^key64_051)
-	acc.Lo += mulFold64(accs[6]^key64_059, accs[7]^key64_067)
+	if h.seed == 0 {
+		acc.Lo += mulFold64(accs[0]^key64_011, accs[1]^key64_019)
+		acc.Lo += mulFold64(accs[2]^key64_027, accs[3]^key64_035)
+		acc.Lo += mulFold64(accs[4]^key64_043, accs[5]^key64_051)
+		acc.Lo += mulFold64(accs[6]^key64_059, accs[7]^key64_067)
+
+		acc.Hi += mulFold64(accs[0]^key64_117, accs[1]^key64_125)
+		acc.Hi += mulFold64(accs[2]^key64_133, accs[3]^key64_141)
+		acc.Hi += mulFold64(accs[4]^key64_149, accs[5]^key64_157)
+		acc.Hi += mulFold64(accs[6]^key64_165, accs[7]^key64_173)
+	} else {
+		secret := h.key
+		const hi_off = 117 - 11
+		acc.Lo += mulFold64(accs[0]^readU64(secret, 11), accs[1]^readU64(secret, 19))
+		acc.Hi += mulFold64(accs[0]^readU64(secret, 11+hi_off), accs[1]^readU64(secret, 19+hi_off))
+
+		acc.Lo += mulFold64(accs[2]^readU64(secret, 27), accs[3]^readU64(secret, 35))
+		acc.Hi += mulFold64(accs[2]^readU64(secret, 27+hi_off), accs[3]^readU64(secret, 35+hi_off))
+
+		acc.Lo += mulFold64(accs[4]^readU64(secret, 43), accs[5]^readU64(secret, 51))
+		acc.Hi += mulFold64(accs[4]^readU64(secret, 43+hi_off), accs[5]^readU64(secret, 51+hi_off))
+
+		acc.Lo += mulFold64(accs[6]^readU64(secret, 59), accs[7]^readU64(secret, 67))
+		acc.Hi += mulFold64(accs[6]^readU64(secret, 59+hi_off), accs[7]^readU64(secret, 67+hi_off))
+	}
 	acc.Lo = xxh3Avalanche(acc.Lo)
-
-	acc.Hi += mulFold64(accs[0]^key64_117, accs[1]^key64_125)
-	acc.Hi += mulFold64(accs[2]^key64_133, accs[3]^key64_141)
-	acc.Hi += mulFold64(accs[4]^key64_149, accs[5]^key64_157)
-	acc.Hi += mulFold64(accs[6]^key64_165, accs[7]^key64_173)
 	acc.Hi = xxh3Avalanche(acc.Hi)
-
 	return acc
 }
