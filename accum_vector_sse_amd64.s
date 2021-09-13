@@ -15,7 +15,7 @@ TEXT ·accumSSE(SB), NOSPLIT, $0-32
 	MOVQ  data+8(FP), CX
 	MOVQ  key+16(FP), DX
 	MOVQ  key+16(FP), BX
-	MOVQ  len+24(FP), SI
+	MOVQ  len+24(FP), BP
 	MOVOU (AX), X1
 	MOVOU 16(AX), X2
 	MOVOU 32(AX), X3
@@ -23,7 +23,7 @@ TEXT ·accumSSE(SB), NOSPLIT, $0-32
 	MOVOU prime_sse<>+0(SB), X0
 
 accum_large:
-	CMPQ    SI, $0x00000400
+	CMPQ    BP, $0x00000400
 	JLE     accum
 	MOVOU   (CX), X5
 	MOVOU   (DX), X6
@@ -538,7 +538,7 @@ accum_large:
 	PADDQ   X5, X4
 	PADDQ   X7, X4
 	ADDQ    $0x00000400, CX
-	SUBQ    $0x00000400, SI
+	SUBQ    $0x00000400, BP
 	MOVOU   X1, X5
 	PSRLQ   $0x2f, X5
 	PXOR    X5, X1
@@ -582,7 +582,7 @@ accum_large:
 	JMP     accum_large
 
 accum:
-	CMPQ    SI, $0x40
+	CMPQ    BP, $0x40
 	JLE     finalize
 	MOVOU   (CX), X0
 	MOVOU   (BX), X5
@@ -617,15 +617,15 @@ accum:
 	PADDQ   X0, X4
 	PADDQ   X6, X4
 	ADDQ    $0x00000040, CX
-	SUBQ    $0x00000040, SI
+	SUBQ    $0x00000040, BP
 	ADDQ    $0x00000008, BX
 	JMP     accum
 
 finalize:
-	CMPQ    SI, $0x00
+	CMPQ    BP, $0x00
 	JE      return
 	SUBQ    $0x40, CX
-	ADDQ    SI, CX
+	ADDQ    BP, CX
 	MOVOU   (CX), X0
 	MOVOU   121(DX), X5
 	PXOR    X0, X5

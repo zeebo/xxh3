@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	hasAVX2 = false
-	hasSSE2 = false
+	hasAVX2   = false
+	hasSSE2   = false
+	hasAVX512 = false
 )
 
 func accumAVX2(acc *[8]u64, data, key unsafe.Pointer, len u64) { panic("unreachable") }

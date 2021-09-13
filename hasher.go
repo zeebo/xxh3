@@ -105,7 +105,9 @@ func (h *Hasher) Sum64() uint64 {
 	accs := h.acc
 
 	if h.len > 0 {
-		if hasAVX2 {
+		if hasAVX512 && h.len > avx512Switch {
+			accumAVX512(&accs, ptr(&h.buf[0]), key, h.len)
+		} else if hasAVX2 {
 			accumAVX2(&accs, ptr(&h.buf[0]), key, h.len)
 		} else if hasSSE2 {
 			accumSSE(&accs, ptr(&h.buf[0]), key, h.len)
@@ -133,7 +135,9 @@ func (h *Hasher) Sum128() Uint128 {
 	accs := h.acc
 
 	if h.len > 0 {
-		if hasAVX2 {
+		if hasAVX512 && h.len > avx512Switch {
+			accumAVX512(&accs, ptr(&h.buf[0]), key, h.len)
+		} else if hasAVX2 {
 			accumAVX2(&accs, ptr(&h.buf[0]), key, h.len)
 		} else if hasSSE2 {
 			accumSSE(&accs, ptr(&h.buf[0]), key, h.len)
