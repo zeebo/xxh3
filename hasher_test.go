@@ -27,6 +27,7 @@ func TestHasherCompat(t *testing.T) {
 			}
 		}
 
+		withAVX512(check)
 		withAVX2(check)
 		withSSE2(check)
 		withGeneric(check)
