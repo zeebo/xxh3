@@ -25,23 +25,23 @@ func AVX512() {
 		prime := ZMM()
 		a := ZMM()
 
-		var keyReg [17]VecVirtual
-		for i := range keyReg {
-			keyReg[i] = ZMM()
-			VMOVDQU64(key.Offset(i*8), keyReg[i])
-		}
-
-		advance := func(n int) {
-			ADDQ(U32(n*64), data.Base)
-			SUBQ(U32(n*64), plen)
-		}
-
 		Label("load")
 		{
 			VMOVDQU64(acc.Offset(0x00), a)
 			VMOVDQU64(primeData, prime)
 		}
+		// Load key at 8 byte offsets in the order we use it.
+		var keyReg [17]VecVirtual
+		for i := range keyReg {
+			keyReg[i] = ZMM()
+			VMOVDQU64(key.Offset(i*8), keyReg[i])
+		}
+		advance := func(n int) {
+			ADDQ(U32(n*64), data.Base)
+			SUBQ(U32(n*64), plen)
+		}
 
+		// Key at offset 121.
 		key121 := ZMM()
 		VMOVDQU64(key.Offset(121), key121)
 
@@ -97,9 +97,7 @@ func avx512scramble(prime, key, a VecVirtual) {
 	y0, y1 := ZMM(), ZMM()
 
 	VPSRLQ(Imm(0x2f), a, y0)
-	//VPXOR(a, y0, y0)
-	//VPXOR(key[koff], y0, y0)
-	// 3 way xor:
+	// 3 way Xor, replacing VPXOR(a, y0, y0), VPXOR(key[koff], y0, y0)
 	VPTERNLOGD(U8(0x96), a, key, y0)
 	VPMULUDQ(prime, y0, y1)
 	VPSHUFD(Imm(0xf5), y0, y0)
