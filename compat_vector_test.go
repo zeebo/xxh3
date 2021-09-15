@@ -50,12 +50,15 @@ func TestVectorCompat(t *testing.T) {
 		895, 896, 897,
 		959, 960, 961,
 		1023, 1024, 1025,
-		avx512Switch, avx512Switch + 1,
 		4932, 10233, 19238,
 		30000, 32 << 10, 1 + 32<<10,
 		100 * 1024,
 		1e6, 1e7, 1e8,
 	} {
+		check(make([]byte, n))
+	}
+	// Test more extensively around avx512Switch.
+	for n := avx512Switch; n < avx512Switch+(_block*5); n++ {
 		check(make([]byte, n))
 	}
 }
