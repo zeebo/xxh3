@@ -1,3 +1,8 @@
+//go:build ignore
+// +build ignore
+
+// Requires https://github.com/mmcloughlin/avo/pull/163
+
 package main
 
 import (
