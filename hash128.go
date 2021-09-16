@@ -240,7 +240,7 @@ func hashLarge128(p ptr, l u64) (acc u128) {
 		prime64_4, prime32_2, prime64_5, prime32_1,
 	}
 
-	if hasAVX512 && l > avx512Switch {
+	if hasAVX512 && l >= avx512Switch {
 		accumAVX512(&accs, p, key, l)
 	} else if hasAVX2 {
 		accumAVX2(&accs, p, key, l)
