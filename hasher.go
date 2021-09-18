@@ -90,7 +90,7 @@ func (h *Hasher) updateString(buf string) {
 
 		h.blk++
 		h.len = _stripe
-		copy(h.buf[_block:], h.buf[:_stripe])
+		copy(h.buf[:_stripe], h.buf[_block:])
 	}
 }
 

@@ -8,10 +8,22 @@ func TestCompatWithC_XXH3_64bits(t *testing.T) {
 	buf := make([]byte, len(testVecs64))
 	for i, exp := range testVecs64 {
 		buf[i] = byte((i + 1) % 251)
+
 		if got := Hash(buf[:i]); got != exp {
 			t.Fatalf("% -4d: %016x != %016x", i, got, exp)
 		}
 		if got := HashString(string(buf[:i])); got != exp {
+			t.Fatalf("% -4d: %016x != %016x", i, got, exp)
+		}
+
+		h := New()
+		h.Write(buf[:i])
+		if got := h.Sum64(); got != exp {
+			t.Fatalf("% -4d: %016x != %016x", i, got, exp)
+		}
+		h.Reset()
+		h.WriteString(string(buf[:i]))
+		if got := h.Sum64(); got != exp {
 			t.Fatalf("% -4d: %016x != %016x", i, got, exp)
 		}
 	}

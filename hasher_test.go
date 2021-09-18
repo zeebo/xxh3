@@ -7,7 +7,7 @@ import (
 func TestHasherCompat(t *testing.T) {
 	buf := make([]byte, 4097)
 	for i := range buf {
-		buf[i] = byte(i) % 251
+		buf[i] = byte((i + 1) % 251)
 	}
 
 	for n := 0; n < 4097; n++ {
