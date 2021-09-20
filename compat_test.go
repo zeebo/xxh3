@@ -63,6 +63,73 @@ func TestCompatWithC_XXH3_64bits(t *testing.T) {
 		}
 	})
 
+	// Test writing one byte at the time.
+	t.Run("no-seed-1b", func(t *testing.T) {
+		buf := make([]byte, len(testVecs64))
+		for i, exp := range testVecs64 {
+			buf[i] = byte((i + 1) % 251)
+			check := func() {
+				if got := Hash(buf[:i]); got != exp {
+					t.Fatalf("Hash: % -4d: %016x != %016x", i, got, exp)
+				}
+				if got := HashString(string(buf[:i])); got != exp {
+					t.Fatalf("HashString: % -4d: %016x != %016x", i, got, exp)
+				}
+				h := New()
+				var tmp [1]byte
+				for _, b := range buf[:i] {
+					tmp[0] = b
+					h.Write(tmp[:])
+				}
+				if got := h.Sum64(); got != exp {
+					t.Fatalf("Hasher.Write: % -4d: %016x != %016x", i, got, exp)
+				}
+				h.Reset()
+				h.WriteString(string(buf[:i]))
+				if got := h.Sum64(); got != exp {
+					t.Fatalf("Hasher.WriteString: % -4d: %016x != %016x", i, got, exp)
+				}
+			}
+			withGeneric(check)
+			withSSE2(check)
+			withAVX2(check)
+			withAVX512(check)
+		}
+	})
+	t.Run("seed", func(t *testing.T) {
+		buf := make([]byte, len(testVecs64))
+		for i, exp := range testVecs64Seed {
+			buf[i] = byte((i + 1) % 251)
+			seed := Hash(buf[:i])
+			check := func() {
+				if got := HashSeed(buf[:i], seed); got != exp {
+					t.Fatalf("HashSeed:% -4d: %016x != %016x", i, got, exp)
+				}
+				if got := HashStringSeed(string(buf[:i]), seed); got != exp {
+					t.Fatalf("HashStringSeed: % -4d: %016x != %016x", i, got, exp)
+				}
+				h := NewSeed(seed)
+				var tmp [1]byte
+				for _, b := range buf[:i] {
+					tmp[0] = b
+					h.Write(tmp[:])
+				}
+				if got := h.Sum64(); got != exp {
+					t.Fatalf("Hasher.Write: % -4d: %016x != %016x (Sum: %016x) ", i, got, exp, HashSeed(buf[:i], seed))
+				}
+				h.Reset()
+				h.WriteString(string(buf[:i]))
+				if got := h.Sum64(); got != exp {
+					t.Fatalf("Hasher.WriteString:% -4d: %016x != %016x", i, got, exp)
+				}
+			}
+			withGeneric(check)
+			withSSE2(check)
+			withAVX2(check)
+			withAVX512(check)
+		}
+	})
+
 }
 
 func TestCompatWithC_XXH3_128bits(t *testing.T) {
@@ -109,6 +176,72 @@ func TestCompatWithC_XXH3_128bits(t *testing.T) {
 				}
 				h := NewSeed(seed)
 				h.Write(buf[:i])
+				if got := h.Sum128(); got != exp {
+					t.Fatalf("Hasher.Write: % -4d: %016x != %016x", i, got, exp)
+				}
+				h.Reset()
+				h.WriteString(string(buf[:i]))
+				if got := h.Sum128(); got != exp {
+					t.Fatalf("Hasher.WriteString: % -4d: %016x != %016x", i, got, exp)
+				}
+			}
+			withGeneric(check)
+			withSSE2(check)
+			withAVX2(check)
+			withAVX512(check)
+		}
+	})
+	t.Run("no-seed-1b", func(t *testing.T) {
+		buf := make([]byte, len(testVecs128))
+		for i, exp := range testVecs128 {
+			buf[i] = byte((i + 1) % 251)
+			check := func() {
+				if got := Hash128(buf[:i]); got != exp {
+					t.Errorf("Hash128: % -4d: %016x != %016x", i, got, exp)
+				}
+				if got := HashString128(string(buf[:i])); got != exp {
+					t.Errorf("HashString128: % -4d: %016x != %016x", i, got, exp)
+				}
+				h := New()
+				var tmp [1]byte
+				for _, b := range buf[:i] {
+					tmp[0] = b
+					h.Write(tmp[:])
+				}
+				if got := h.Sum128(); got != exp {
+					t.Fatalf("Hasher.Write: % -4d: %016x != %016x", i, got, exp)
+				}
+				h.Reset()
+				h.WriteString(string(buf[:i]))
+				if got := h.Sum128(); got != exp {
+					t.Fatalf("Hasher.WriteString: % -4d: %016x != %016x", i, got, exp)
+				}
+			}
+			withGeneric(check)
+			withSSE2(check)
+			withAVX2(check)
+		}
+	})
+	t.Run("seed-1b", func(t *testing.T) {
+		buf := make([]byte, len(testVecs128))
+		for i, x := range testVecs128Seed {
+			buf[i] = byte((i + 1) % 251)
+			seed := Hash(buf[:i])
+			exp := Uint128{Hi: x[0], Lo: x[1]}
+			check := func() {
+				if got := Hash128Seed(buf[:i], seed); got != exp {
+					t.Fatalf("Hash128Seed: % -4d: %016x != %016x", i, got, exp)
+					return
+				}
+				if got := HashString128Seed(string(buf[:i]), seed); got != exp {
+					t.Fatalf("HashString128Seed: % -4d: %016x != %016x", i, got, exp)
+				}
+				h := NewSeed(seed)
+				var tmp [1]byte
+				for _, b := range buf[:i] {
+					tmp[0] = b
+					h.Write(tmp[:])
+				}
 				if got := h.Sum128(); got != exp {
 					t.Fatalf("Hasher.Write: % -4d: %016x != %016x", i, got, exp)
 				}
