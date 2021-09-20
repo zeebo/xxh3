@@ -90,6 +90,22 @@ func (h *Hasher) update(buf []byte) {
 }
 
 func (h *Hasher) updateString(buf string) {
+	// On first write, if more than 1 block, process without copy.
+	if h.len == 0 && len(buf) > len(h.buf) {
+		n := (u64(len(buf)) - _stripe) >> 10
+		for i := u64(0); i < n; i++ {
+			if hasAVX2 {
+				accumBlockAVX2(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+			} else if hasSSE2 {
+				accumBlockSSE(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+			} else {
+				accumBlockScalar(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+			}
+			buf = buf[_block:]
+		}
+		h.blk += n
+	}
+
 	for len(buf) > 0 {
 		if h.len < u64(len(h.buf)) {
 			n := copy(h.buf[h.len:], buf)
