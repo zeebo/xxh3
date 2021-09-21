@@ -8,7 +8,7 @@ func Hash(b []byte) uint64 {
 	if len(b) <= 16 {
 		fn = hashSmall
 	}
-	return fn(*(*ptr)(ptr(&b)), len(b))
+	return fn(*(*str)(ptr(&b)))
 
 }
 
@@ -18,10 +18,12 @@ func HashString(s string) uint64 {
 	if len(s) <= 16 {
 		fn = hashSmall
 	}
-	return fn(*(*ptr)(ptr(&s)), len(s))
+	return fn(*(*str)(ptr(&s)))
 }
 
-func hashSmall(p ptr, l int) (acc u64) {
+func hashSmall(s str) (acc u64) {
+	p, l := s.p, s.l
+
 	switch {
 	case l > 8:
 		inputlo := readU64(p, 0) ^ (key64_024 ^ key64_032)
@@ -57,8 +59,8 @@ func hashSmall(p ptr, l int) (acc u64) {
 	return xxh64AvalancheSmall(acc)
 }
 
-func hashMed(p ptr, l int) (acc u64) {
-	const seed = 0
+func hashMed(s str) (acc u64) {
+	p, l := s.p, s.l
 
 	switch {
 	case l <= 128:
@@ -186,5 +188,7 @@ func hashLarge(p ptr, l u64) (acc u64) {
 	acc += mulFold64(accs[4]^key64_043, accs[5]^key64_051)
 	acc += mulFold64(accs[6]^key64_059, accs[7]^key64_067)
 
-	return xxh3Avalanche(acc)
+	acc = xxh3Avalanche(acc)
+
+	return acc
 }

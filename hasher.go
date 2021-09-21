@@ -91,19 +91,16 @@ func (h *Hasher) update(buf []byte) {
 
 func (h *Hasher) updateString(buf string) {
 	// On first write, if more than 1 block, process without copy.
-	if h.len == 0 && len(buf) > len(h.buf) {
-		n := (u64(len(buf)) - _stripe) >> 10
-		for i := u64(0); i < n; i++ {
-			if hasAVX2 {
-				accumBlockAVX2(&h.acc, *(*ptr)(ptr(&buf)), h.key)
-			} else if hasSSE2 {
-				accumBlockSSE(&h.acc, *(*ptr)(ptr(&buf)), h.key)
-			} else {
-				accumBlockScalar(&h.acc, *(*ptr)(ptr(&buf)), h.key)
-			}
-			buf = buf[_block:]
+	for h.len == 0 && len(buf) > len(h.buf) {
+		if hasAVX2 {
+			accumBlockAVX2(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+		} else if hasSSE2 {
+			accumBlockSSE(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+		} else {
+			accumBlockScalar(&h.acc, *(*ptr)(ptr(&buf)), h.key)
 		}
-		h.blk += n
+		buf = buf[_block:]
+		h.blk++
 	}
 
 	for len(buf) > 0 {
@@ -165,7 +162,9 @@ func (h *Hasher) Sum64() uint64 {
 		acc += mulFold64(accs[6]^readU64(secret, 59), accs[7]^readU64(secret, 67))
 	}
 
-	return xxh3Avalanche(acc)
+	acc = xxh3Avalanche(acc)
+
+	return acc
 }
 
 // Sum128 returns the 128-bit hash of the written data.
@@ -194,17 +193,20 @@ func (h *Hasher) Sum128() Uint128 {
 
 	if h.seed == 0 {
 		acc.Lo += mulFold64(accs[0]^key64_011, accs[1]^key64_019)
-		acc.Lo += mulFold64(accs[2]^key64_027, accs[3]^key64_035)
-		acc.Lo += mulFold64(accs[4]^key64_043, accs[5]^key64_051)
-		acc.Lo += mulFold64(accs[6]^key64_059, accs[7]^key64_067)
-
 		acc.Hi += mulFold64(accs[0]^key64_117, accs[1]^key64_125)
+
+		acc.Lo += mulFold64(accs[2]^key64_027, accs[3]^key64_035)
 		acc.Hi += mulFold64(accs[2]^key64_133, accs[3]^key64_141)
+
+		acc.Lo += mulFold64(accs[4]^key64_043, accs[5]^key64_051)
 		acc.Hi += mulFold64(accs[4]^key64_149, accs[5]^key64_157)
+
+		acc.Lo += mulFold64(accs[6]^key64_059, accs[7]^key64_067)
 		acc.Hi += mulFold64(accs[6]^key64_165, accs[7]^key64_173)
 	} else {
 		secret := h.key
 		const hi_off = 117 - 11
+
 		acc.Lo += mulFold64(accs[0]^readU64(secret, 11), accs[1]^readU64(secret, 19))
 		acc.Hi += mulFold64(accs[0]^readU64(secret, 11+hi_off), accs[1]^readU64(secret, 19+hi_off))
 
@@ -217,7 +219,9 @@ func (h *Hasher) Sum128() Uint128 {
 		acc.Lo += mulFold64(accs[6]^readU64(secret, 59), accs[7]^readU64(secret, 67))
 		acc.Hi += mulFold64(accs[6]^readU64(secret, 59+hi_off), accs[7]^readU64(secret, 67+hi_off))
 	}
+
 	acc.Lo = xxh3Avalanche(acc.Lo)
 	acc.Hi = xxh3Avalanche(acc.Hi)
+
 	return acc
 }

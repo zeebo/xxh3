@@ -6,21 +6,25 @@ const secret_size = 192
 
 // HashSeed returns the hash of the byte slice with given seed.
 func HashSeed(b []byte, seed uint64) uint64 {
+	fn := hashMedSeed
 	if len(b) <= 16 {
-		return hashSmallSeed(*(*ptr)(ptr(&b)), len(b), seed)
+		fn = hashSmallSeed
 	}
-	return hashMedSeed(*(*ptr)(ptr(&b)), len(b), seed)
+	return fn(*(*str)(ptr(&b)), seed)
 }
 
 // HashStringSeed returns the hash of the string slice with given seed.
 func HashStringSeed(s string, seed uint64) uint64 {
+	fn := hashMedSeed
 	if len(s) <= 16 {
-		return hashSmallSeed(*(*ptr)(ptr(&s)), len(s), seed)
+		fn = hashSmallSeed
 	}
-	return hashMedSeed(*(*ptr)(ptr(&s)), len(s), seed)
+	return fn(*(*str)(ptr(&s)), seed)
 }
 
-func hashSmallSeed(p ptr, l int, seed uint64) (acc u64) {
+func hashSmallSeed(s str, seed uint64) (acc u64) {
+	p, l := s.p, s.l
+
 	switch {
 	case l > 8:
 		inputlo := readU64(p, 0) ^ (key64_024 ^ key64_032 + seed)
@@ -56,7 +60,9 @@ func hashSmallSeed(p ptr, l int, seed uint64) (acc u64) {
 	return xxhAvalancheSmall(acc ^ (u64(key32_000^key32_004) + seed))
 }
 
-func hashMedSeed(p ptr, l int, seed uint64) (acc u64) {
+func hashMedSeed(s str, seed uint64) (acc u64) {
+	p, l := s.p, s.l
+
 	switch {
 	case l <= 128:
 		acc = u64(l) * prime64_1
@@ -164,15 +170,6 @@ func hashMedSeed(p ptr, l int, seed uint64) (acc u64) {
 	}
 }
 
-func initSecret(secret ptr, seed u64) {
-	for i := ui(0); i < secret_size/16; i++ {
-		lo := readU64(key, 16*i) + seed
-		hi := readU64(key, 16*i+8) - seed
-		writeU64(secret, 16*i, lo)
-		writeU64(secret, 16*i+8, hi)
-	}
-}
-
 func hashLargeSeed(p ptr, l u64, secret ptr) (acc u64) {
 	acc = l * prime64_1
 	accs := [8]u64{
@@ -193,14 +190,7 @@ func hashLargeSeed(p ptr, l u64, secret ptr) (acc u64) {
 	acc += mulFold64(accs[4]^readU64(secret, 43), accs[5]^readU64(secret, 51))
 	acc += mulFold64(accs[6]^readU64(secret, 59), accs[7]^readU64(secret, 67))
 
-	return xxh3Avalanche(acc)
-}
+	acc = xxh3Avalanche(acc)
 
-func xxhAvalancheSmall(x u64) u64 {
-	x ^= x >> 33
-	x *= prime64_2
-	x ^= x >> 29
-	x *= prime64_3
-	x ^= x >> 32
-	return x
+	return acc
 }

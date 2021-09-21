@@ -10,7 +10,7 @@ func Hash128(b []byte) Uint128 {
 	if len(b) <= 16 {
 		fn = hashSmall128
 	}
-	return fn(*(*ptr)(ptr(&b)), len(b))
+	return fn(*(*str)(ptr(&b)))
 }
 
 // HashString128 returns the 128-bit hash of the string slice.
@@ -19,10 +19,12 @@ func HashString128(s string) Uint128 {
 	if len(s) <= 16 {
 		fn = hashSmall128
 	}
-	return fn(*(*ptr)(ptr(&s)), len(s))
+	return fn(*(*str)(ptr(&s)))
 }
 
-func hashSmall128(p ptr, l int) (acc u128) {
+func hashSmall128(s str) (acc u128) {
+	p, l := s.p, s.l
+
 	switch {
 	case l > 8:
 		const bitflipl = key64_032 ^ key64_040
@@ -95,8 +97,8 @@ func hashSmall128(p ptr, l int) (acc u128) {
 	return acc
 }
 
-func hashMed128(p ptr, l int) (acc u128) {
-	const seed = 0
+func hashMed128(s str) (acc u128) {
+	p, l := s.p, s.l
 
 	switch {
 	case l <= 128:
@@ -252,15 +254,18 @@ func hashLarge128(p ptr, l u64) (acc u128) {
 
 	// merge accs
 	acc.Lo += mulFold64(accs[0]^key64_011, accs[1]^key64_019)
-	acc.Lo += mulFold64(accs[2]^key64_027, accs[3]^key64_035)
-	acc.Lo += mulFold64(accs[4]^key64_043, accs[5]^key64_051)
-	acc.Lo += mulFold64(accs[6]^key64_059, accs[7]^key64_067)
-	acc.Lo = xxh3Avalanche(acc.Lo)
-
 	acc.Hi += mulFold64(accs[0]^key64_117, accs[1]^key64_125)
+
+	acc.Lo += mulFold64(accs[2]^key64_027, accs[3]^key64_035)
 	acc.Hi += mulFold64(accs[2]^key64_133, accs[3]^key64_141)
+
+	acc.Lo += mulFold64(accs[4]^key64_043, accs[5]^key64_051)
 	acc.Hi += mulFold64(accs[4]^key64_149, accs[5]^key64_157)
+
+	acc.Lo += mulFold64(accs[6]^key64_059, accs[7]^key64_067)
 	acc.Hi += mulFold64(accs[6]^key64_165, accs[7]^key64_173)
+
+	acc.Lo = xxh3Avalanche(acc.Lo)
 	acc.Hi = xxh3Avalanche(acc.Hi)
 
 	return acc

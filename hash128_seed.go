@@ -10,7 +10,7 @@ func Hash128Seed(b []byte, seed uint64) Uint128 {
 	if len(b) <= 16 {
 		fn = hashSmall128Seed
 	}
-	return fn(*(*ptr)(ptr(&b)), len(b), seed)
+	return fn(*(*str)(ptr(&b)), seed)
 }
 
 // HashString128Seed returns the 128-bit hash of the string slice.
@@ -19,10 +19,12 @@ func HashString128Seed(s string, seed uint64) Uint128 {
 	if len(s) <= 16 {
 		fn = hashSmall128Seed
 	}
-	return fn(*(*ptr)(ptr(&s)), len(s), seed)
+	return fn(*(*str)(ptr(&s)), seed)
 }
 
-func hashSmall128Seed(p ptr, l int, seed uint64) (acc u128) {
+func hashSmall128Seed(s str, seed uint64) (acc u128) {
+	p, l := s.p, s.l
+
 	switch {
 	case l > 8:
 		bitflipl := (key64_032 ^ key64_040) - seed
@@ -97,7 +99,9 @@ func hashSmall128Seed(p ptr, l int, seed uint64) (acc u128) {
 	return acc
 }
 
-func hashMed128Seed(p ptr, l int, seed uint64) (acc u128) {
+func hashMed128Seed(s str, seed uint64) (acc u128) {
+	p, l := s.p, s.l
+
 	switch {
 	case l <= 128:
 		acc.Lo = u64(l) * prime64_1
@@ -258,15 +262,21 @@ func hashLarge128Seed(p ptr, l u64, secret ptr) (acc u128) {
 
 	// merge accs
 	const hi_off = 117 - 11
+
 	acc.Lo += mulFold64(accs[0]^readU64(secret, 11), accs[1]^readU64(secret, 19))
 	acc.Hi += mulFold64(accs[0]^readU64(secret, 11+hi_off), accs[1]^readU64(secret, 19+hi_off))
+
 	acc.Lo += mulFold64(accs[2]^readU64(secret, 27), accs[3]^readU64(secret, 35))
 	acc.Hi += mulFold64(accs[2]^readU64(secret, 27+hi_off), accs[3]^readU64(secret, 35+hi_off))
+
 	acc.Lo += mulFold64(accs[4]^readU64(secret, 43), accs[5]^readU64(secret, 51))
 	acc.Hi += mulFold64(accs[4]^readU64(secret, 43+hi_off), accs[5]^readU64(secret, 51+hi_off))
+
 	acc.Lo += mulFold64(accs[6]^readU64(secret, 59), accs[7]^readU64(secret, 67))
 	acc.Hi += mulFold64(accs[6]^readU64(secret, 59+hi_off), accs[7]^readU64(secret, 67+hi_off))
+
 	acc.Lo = xxh3Avalanche(acc.Lo)
 	acc.Hi = xxh3Avalanche(acc.Hi)
+
 	return acc
 }
