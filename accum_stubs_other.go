@@ -13,10 +13,11 @@ const (
 	hasAVX512 = false
 )
 
-func accumAVX2(acc *[8]u64, data, key unsafe.Pointer, len u64) { panic("unreachable") }
-func accumSSE(acc *[8]u64, data, key unsafe.Pointer, len u64)  { panic("unreachable") }
-func accumBlockAVX2(acc *[8]u64, data, key unsafe.Pointer)     { panic("unreachable") }
-func accumBlockSSE(acc *[8]u64, data, key unsafe.Pointer)      { panic("unreachable") }
+func accumAVX2(acc *[8]u64, data, key unsafe.Pointer, len u64)   { panic("unreachable") }
+func accumSSE(acc *[8]u64, data, key unsafe.Pointer, len u64)    { panic("unreachable") }
+func accumBlockAVX2(acc *[8]u64, data, key unsafe.Pointer)       { panic("unreachable") }
+func accumBlockSSE(acc *[8]u64, data, key unsafe.Pointer)        { panic("unreachable") }
+func accumAVX512(acc *[8]u64, data, key unsafe.Pointer, len u64) { panic("unreachable") }
 
 func withAVX2(cb func())    { cb() }
 func withSSE2(cb func())    { cb() }
