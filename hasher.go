@@ -22,10 +22,7 @@ var (
 
 // New returns a new Hasher that implements the hash.Hash interface.
 func New() *Hasher {
-	var h Hasher
-	h.key = key
-	h.Reset()
-	return &h
+	return new(Hasher)
 }
 
 // NewSeed returns a new Hasher that implements the hash.Hash interface.
@@ -90,6 +87,11 @@ func (h *Hasher) update(buf []byte) {
 }
 
 func (h *Hasher) updateString(buf string) {
+	if h.key == nil {
+		h.key = key
+		h.Reset()
+	}
+
 	// On first write, if more than 1 block, process without copy.
 	for h.len == 0 && len(buf) > len(h.buf) {
 		if hasAVX2 {
@@ -127,6 +129,11 @@ func (h *Hasher) updateString(buf string) {
 
 // Sum64 returns the 64-bit hash of the written data.
 func (h *Hasher) Sum64() uint64 {
+	if h.key == nil {
+		h.key = key
+		h.Reset()
+	}
+
 	if h.blk == 0 {
 		if h.seed == 0 {
 			return Hash(h.buf[:h.len])
@@ -169,6 +176,11 @@ func (h *Hasher) Sum64() uint64 {
 
 // Sum128 returns the 128-bit hash of the written data.
 func (h *Hasher) Sum128() Uint128 {
+	if h.key == nil {
+		h.key = key
+		h.Reset()
+	}
+
 	if h.blk == 0 {
 		if h.seed == 0 {
 			return Hash128(h.buf[:h.len])
