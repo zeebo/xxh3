@@ -9,7 +9,7 @@ import (
 func TestHasherCompat(t *testing.T) {
 	buf := make([]byte, 40970)
 	for i := range buf {
-		buf[i] = byte((i + 1) * 2654435761)
+		buf[i] = byte(uint64(i+1) * 2654435761)
 	}
 
 	for n := range buf {
@@ -36,7 +36,7 @@ func TestHasherCompat(t *testing.T) {
 func TestHasherCompatSeed(t *testing.T) {
 	buf := make([]byte, 40970)
 	for i := range buf {
-		buf[i] = byte((i + 1) * 2654435761)
+		buf[i] = byte(uint64(i+1) * 2654435761)
 	}
 	rng := rand.New(rand.NewSource(42))
 
@@ -72,7 +72,7 @@ func BenchmarkHasher64(b *testing.B) {
 		size := 1 << n
 		buf := make([]byte, size)
 		for i := range buf {
-			buf[i] = byte((i + int(n) + 1) * 2654435761)
+			buf[i] = byte(uint64(i+int(n)+1) * 2654435761)
 		}
 		seed := rng.Uint64() | 1
 		b.Run(fmt.Sprint(size), func(b *testing.B) {
@@ -134,7 +134,7 @@ func BenchmarkHasher128(b *testing.B) {
 		size := 1 << n
 		buf := make([]byte, size)
 		for i := range buf {
-			buf[i] = byte((i + int(n) + 1) * 2654435761)
+			buf[i] = byte(uint64(i+int(n)+1) * 2654435761)
 		}
 		seed := rng.Uint64() | 1
 		b.Run(fmt.Sprint(size), func(b *testing.B) {
