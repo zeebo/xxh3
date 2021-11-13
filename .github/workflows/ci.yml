@@ -39,7 +39,8 @@ jobs:
         with:
           persist-credentials: false
       - name: Generate
-        run: go generate -v -x ./...
+        working-directory: avo
+        run: go generate -v -x
       - name: Git Status
         run: |
           git diff
