@@ -1,6 +1,7 @@
 package xxh3
 
 import (
+	"encoding/binary"
 	"fmt"
 	"runtime"
 	"testing"
@@ -27,7 +28,6 @@ func BenchmarkFixed64(b *testing.B) {
 				}
 				runtime.KeepAlive(acc)
 			})
-
 		}
 
 		if i > 240 {
@@ -71,4 +71,12 @@ func BenchmarkFixed64(b *testing.B) {
 	r(1000 * 1024)
 	r(10000 * 1024)
 	r(100000 * 1024)
+}
+
+func BenchmarkHashEscape(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		var b [8]byte
+		binary.LittleEndian.PutUint64(b[:], uint64(i))
+		_ = Hash(b[:])
+	}
 }
