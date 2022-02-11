@@ -8,8 +8,7 @@ func Hash(b []byte) uint64 {
 	if len(b) <= 16 {
 		fn = hashSmall
 	}
-	return fn(*(*str)(ptr(&b)))
-
+	return fn(*(*str)(noescape(ptr(&b))))
 }
 
 // Hash returns the hash of the string slice.
