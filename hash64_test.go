@@ -74,6 +74,7 @@ func BenchmarkFixed64(b *testing.B) {
 }
 
 func BenchmarkHashEscape(b *testing.B) {
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		var b [8]byte
 		binary.LittleEndian.PutUint64(b[:], uint64(i))
