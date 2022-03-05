@@ -34,7 +34,7 @@ func NewSeed(seed uint64) *Hasher {
 
 	// Only initiate once, not on reset.
 	if seed != 0 {
-		h.key = ptr(&[secret_size]byte{})
+		h.key = ptr(&[secretSize]byte{})
 		initSecret(h.key, seed)
 	}
 	return &h

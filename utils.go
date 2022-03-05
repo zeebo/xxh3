@@ -1,7 +1,6 @@
 package xxh3
 
 import (
-	"encoding/binary"
 	"math/bits"
 	"unsafe"
 )
@@ -34,19 +33,45 @@ type (
 
 type str struct {
 	p ptr
-	l int
+	l uint
 }
 
-var le = binary.LittleEndian
+func readU8(p ptr, o ui) uint8 {
+	return *(*uint8)(ptr(ui(p) + o))
+}
 
-func readU8(p ptr, o ui) uint8    { return *(*uint8)(ptr(ui(p) + o)) }
-func readU16(p ptr, o ui) uint16  { return le.Uint16((*[2]byte)(ptr(ui(p) + o))[:]) }
-func readU32(p ptr, o ui) uint32  { return le.Uint32((*[4]byte)(ptr(ui(p) + o))[:]) }
-func readU64(p ptr, o ui) uint64  { return le.Uint64((*[8]byte)(ptr(ui(p) + o))[:]) }
-func writeU64(p ptr, o ui, v u64) { le.PutUint64((*[8]byte)(ptr(ui(p) + o))[:], v) }
+func readU16(p ptr, o ui) uint16 {
+	b := (*[2]byte)(ptr(ui(p) + o))
+	return uint16(b[0]) | uint16(b[1])<<8
+}
+
+func readU32(p ptr, o ui) uint32 {
+	b := (*[4]byte)(ptr(ui(p) + o))
+	return uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
+}
+
+func readU64(p ptr, o ui) uint64 {
+	b := (*[8]byte)(ptr(ui(p) + o))
+	return uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24 |
+		uint64(b[4])<<32 | uint64(b[5])<<40 | uint64(b[6])<<48 | uint64(b[7])<<56
+}
+
+func writeU64(p ptr, o ui, v u64) {
+	b := (*[8]byte)(ptr(ui(p) + o))
+	b[0] = byte(v)
+	b[1] = byte(v >> 8)
+	b[2] = byte(v >> 16)
+	b[3] = byte(v >> 24)
+	b[4] = byte(v >> 32)
+	b[5] = byte(v >> 40)
+	b[6] = byte(v >> 48)
+	b[7] = byte(v >> 56)
+}
+
+const secretSize = 192
 
 func initSecret(secret ptr, seed u64) {
-	for i := ui(0); i < secret_size/16; i++ {
+	for i := ui(0); i < secretSize/16; i++ {
 		lo := readU64(key, 16*i) + seed
 		hi := readU64(key, 16*i+8) - seed
 		writeU64(secret, 16*i, lo)

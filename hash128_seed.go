@@ -6,103 +6,92 @@ import (
 
 // Hash128Seed returns the 128-bit hash of the byte slice.
 func Hash128Seed(b []byte, seed uint64) Uint128 {
-	fn := hashMed128Seed
-	if len(b) <= 16 {
-		fn = hashSmall128Seed
-	}
-	return fn(*(*str)(ptr(&b)), seed)
+	return hashAny128Seed(*(*str)(ptr(&b)), seed)
 }
 
 // HashString128Seed returns the 128-bit hash of the string slice.
 func HashString128Seed(s string, seed uint64) Uint128 {
-	fn := hashMed128Seed
-	if len(s) <= 16 {
-		fn = hashSmall128Seed
-	}
-	return fn(*(*str)(ptr(&s)), seed)
+	return hashAny128Seed(*(*str)(ptr(&s)), seed)
 }
 
-func hashSmall128Seed(s str, seed uint64) (acc u128) {
+func hashAny128Seed(s str, seed uint64) (acc u128) {
 	p, l := s.p, s.l
 
 	switch {
-	case l > 8:
-		bitflipl := (key64_032 ^ key64_040) - seed
-		bitfliph := (key64_048 ^ key64_056) + seed
+	case l <= 16:
+		switch {
+		case l > 8: // 9-16
+			bitflipl := (key64_032 ^ key64_040) - seed
+			bitfliph := (key64_048 ^ key64_056) + seed
 
-		input_lo := readU64(p, 0)
-		input_hi := readU64(p, ui(l)-8)
+			input_lo := readU64(p, 0)
+			input_hi := readU64(p, ui(l)-8)
 
-		m128_h, m128_l := bits.Mul64(input_lo^input_hi^bitflipl, prime64_1)
+			m128_h, m128_l := bits.Mul64(input_lo^input_hi^bitflipl, prime64_1)
 
-		m128_l += uint64(l-1) << 54
-		input_hi ^= bitfliph
+			m128_l += uint64(l-1) << 54
+			input_hi ^= bitfliph
 
-		m128_h += input_hi + uint64(uint32(input_hi))*(prime32_2-1)
+			m128_h += input_hi + uint64(uint32(input_hi))*(prime32_2-1)
 
-		m128_l ^= bits.ReverseBytes64(m128_h)
+			m128_l ^= bits.ReverseBytes64(m128_h)
 
-		acc.Hi, acc.Lo = bits.Mul64(m128_l, prime64_2)
-		acc.Hi += m128_h * prime64_2
+			acc.Hi, acc.Lo = bits.Mul64(m128_l, prime64_2)
+			acc.Hi += m128_h * prime64_2
 
-		acc.Lo = xxh3Avalanche(acc.Lo)
-		acc.Hi = xxh3Avalanche(acc.Hi)
+			acc.Lo = xxh3Avalanche(acc.Lo)
+			acc.Hi = xxh3Avalanche(acc.Hi)
+
+			return acc
+
+		case l > 3: // 4-8
+			seed ^= u64(bits.ReverseBytes32(u32(seed))) << 32
+			bitflip := (key64_016 ^ key64_024) + seed
+			input_lo := readU32(p, 0)
+			input_hi := readU32(p, ui(l)-4)
+			input_64 := u64(input_lo) + u64(input_hi)<<32
+			keyed := input_64 ^ bitflip
+
+			acc.Hi, acc.Lo = bits.Mul64(keyed, prime64_1+(uint64(l)<<2))
+
+			acc.Hi += acc.Lo << 1
+			acc.Lo ^= acc.Hi >> 3
+
+			acc.Lo ^= acc.Lo >> 35
+			acc.Lo *= 0x9fb21c651e98df25
+			acc.Lo ^= acc.Lo >> 28
+			acc.Hi = xxh3Avalanche(acc.Hi)
+
+			return acc
+
+		case l == 3: // 3
+			c12 := u64(readU16(p, 0))
+			c3 := u64(readU8(p, 2))
+			acc.Lo = c12<<16 + c3 + 3<<8
+
+		case l > 1: // 2
+			c12 := u64(readU16(p, 0))
+			acc.Lo = c12*(1<<24+1)>>8 + 2<<8
+
+		case l == 1: // 1
+			c1 := u64(readU8(p, 0))
+			acc.Lo = c1*(1<<24+1<<16+1) + 1<<8
+
+		default: // 0
+			bitflipl := key64_064 ^ key64_072 ^ seed
+			bitfliph := key64_080 ^ key64_088 ^ seed
+			return u128{Lo: xxh64AvalancheFull(bitflipl), Hi: xxh64AvalancheFull(bitfliph)}
+		}
+
+		acc.Hi = uint64(bits.RotateLeft32(bits.ReverseBytes32(uint32(acc.Lo)), 13))
+		acc.Lo ^= uint64(key32_000^key32_004) + seed
+		acc.Hi ^= uint64(key32_008^key32_012) - seed
+
+		acc.Lo = xxh64AvalancheFull(acc.Lo)
+		acc.Hi = xxh64AvalancheFull(acc.Hi)
 
 		return acc
 
-	case l >= 4:
-		seed ^= u64(bits.ReverseBytes32(u32(seed))) << 32
-		bitflip := (key64_016 ^ key64_024) + seed
-		input_lo := readU32(p, 0)
-		input_hi := readU32(p, ui(l)-4)
-		input_64 := u64(input_lo) + u64(input_hi)<<32
-		keyed := input_64 ^ bitflip
-
-		acc.Hi, acc.Lo = bits.Mul64(keyed, prime64_1+(uint64(l)<<2))
-
-		acc.Hi += acc.Lo << 1
-		acc.Lo ^= acc.Hi >> 3
-
-		acc.Lo ^= acc.Lo >> 35
-		acc.Lo *= 0x9fb21c651e98df25
-		acc.Lo ^= acc.Lo >> 28
-		acc.Hi = xxh3Avalanche(acc.Hi)
-
-		return acc
-
-	case l == 3:
-		c12 := u64(readU16(p, 0))
-		c3 := u64(readU8(p, 2))
-		acc.Lo = c12<<16 + c3 + 3<<8
-
-	case l == 2:
-		c12 := u64(readU16(p, 0))
-		acc.Lo = c12*(1<<24+1)>>8 + 2<<8
-
-	case l == 1:
-		c1 := u64(readU8(p, 0))
-		acc.Lo = c1*(1<<24+1<<16+1) + 1<<8
-
-	case l == 0:
-		bitflipl := key64_064 ^ key64_072 ^ seed
-		bitfliph := key64_080 ^ key64_088 ^ seed
-		return u128{Lo: xxh64AvalancheFull(bitflipl), Hi: xxh64AvalancheFull(bitfliph)}
-	}
-
-	acc.Hi = uint64(bits.RotateLeft32(bits.ReverseBytes32(uint32(acc.Lo)), 13))
-	acc.Lo ^= uint64(key32_000^key32_004) + seed
-	acc.Hi ^= uint64(key32_008^key32_012) - seed
-
-	acc.Lo = xxh64AvalancheFull(acc.Lo)
-	acc.Hi = xxh64AvalancheFull(acc.Hi)
-
-	return acc
-}
-
-func hashMed128Seed(s str, seed uint64) (acc u128) {
-	p, l := s.p, s.l
-
-	switch {
 	case l <= 128:
 		acc.Lo = u64(l) * prime64_1
 
@@ -114,7 +103,6 @@ func hashMed128Seed(s str, seed uint64) (acc u128) {
 
 					acc.Hi += mulFold64(in8^(key64_112+seed), in7^(key64_120-seed))
 					acc.Hi ^= i6 + i7
-
 					acc.Lo += mulFold64(i6^(key64_096+seed), i7^(key64_104-seed))
 					acc.Lo ^= in8 + in7
 
@@ -125,7 +113,6 @@ func hashMed128Seed(s str, seed uint64) (acc u128) {
 
 				acc.Hi += mulFold64(in6^(key64_080+seed), in5^(key64_088-seed))
 				acc.Hi ^= i4 + i5
-
 				acc.Lo += mulFold64(i4^(key64_064+seed), i5^(key64_072-seed))
 				acc.Lo ^= in6 + in5
 
@@ -136,7 +123,6 @@ func hashMed128Seed(s str, seed uint64) (acc u128) {
 
 			acc.Hi += mulFold64(in4^(key64_048+seed), in3^(key64_056-seed))
 			acc.Hi ^= i2 + i3
-
 			acc.Lo += mulFold64(i2^(key64_032+seed), i3^(key64_040-seed))
 			acc.Lo ^= in4 + in3
 
@@ -147,7 +133,6 @@ func hashMed128Seed(s str, seed uint64) (acc u128) {
 
 		acc.Hi += mulFold64(in2^(key64_016+seed), in1^(key64_024-seed))
 		acc.Hi ^= i0 + i1
-
 		acc.Lo += mulFold64(i0^(key64_000+seed), i1^(key64_008-seed))
 		acc.Lo ^= in2 + in1
 
@@ -232,51 +217,48 @@ func hashMed128Seed(s str, seed uint64) (acc u128) {
 		return acc
 
 	default:
+		acc.Lo = u64(l) * prime64_1
+		acc.Hi = ^(u64(l) * prime64_2)
+
 		secret := key
 		if seed != 0 {
-			secret = ptr(&[secret_size]byte{})
+			secret = ptr(&[secretSize]byte{})
 			initSecret(secret, seed)
 		}
-		return hashLarge128Seed(p, u64(l), secret)
+
+		accs := [8]u64{
+			prime32_3, prime64_1, prime64_2, prime64_3,
+			prime64_4, prime32_2, prime64_5, prime32_1,
+		}
+
+		if hasAVX512 && l >= avx512Switch {
+			accumAVX512(&accs, p, secret, u64(l))
+		} else if hasAVX2 {
+			accumAVX2(&accs, p, secret, u64(l))
+		} else if hasSSE2 {
+			accumSSE(&accs, p, secret, u64(l))
+		} else {
+			accumScalar(&accs, p, secret, u64(l))
+		}
+
+		// merge accs
+		const hi_off = 117 - 11
+
+		acc.Lo += mulFold64(accs[0]^readU64(secret, 11), accs[1]^readU64(secret, 19))
+		acc.Hi += mulFold64(accs[0]^readU64(secret, 11+hi_off), accs[1]^readU64(secret, 19+hi_off))
+
+		acc.Lo += mulFold64(accs[2]^readU64(secret, 27), accs[3]^readU64(secret, 35))
+		acc.Hi += mulFold64(accs[2]^readU64(secret, 27+hi_off), accs[3]^readU64(secret, 35+hi_off))
+
+		acc.Lo += mulFold64(accs[4]^readU64(secret, 43), accs[5]^readU64(secret, 51))
+		acc.Hi += mulFold64(accs[4]^readU64(secret, 43+hi_off), accs[5]^readU64(secret, 51+hi_off))
+
+		acc.Lo += mulFold64(accs[6]^readU64(secret, 59), accs[7]^readU64(secret, 67))
+		acc.Hi += mulFold64(accs[6]^readU64(secret, 59+hi_off), accs[7]^readU64(secret, 67+hi_off))
+
+		acc.Lo = xxh3Avalanche(acc.Lo)
+		acc.Hi = xxh3Avalanche(acc.Hi)
+
+		return acc
 	}
-}
-
-func hashLarge128Seed(p ptr, l u64, secret ptr) (acc u128) {
-	acc.Lo = l * prime64_1
-	acc.Hi = ^(l * prime64_2)
-
-	accs := [8]u64{
-		prime32_3, prime64_1, prime64_2, prime64_3,
-		prime64_4, prime32_2, prime64_5, prime32_1,
-	}
-
-	if hasAVX512 && l >= avx512Switch {
-		accumAVX512(&accs, p, secret, l)
-	} else if hasAVX2 {
-		accumAVX2(&accs, p, secret, l)
-	} else if hasSSE2 {
-		accumSSE(&accs, p, secret, l)
-	} else {
-		accumScalar(&accs, p, secret, l)
-	}
-
-	// merge accs
-	const hi_off = 117 - 11
-
-	acc.Lo += mulFold64(accs[0]^readU64(secret, 11), accs[1]^readU64(secret, 19))
-	acc.Hi += mulFold64(accs[0]^readU64(secret, 11+hi_off), accs[1]^readU64(secret, 19+hi_off))
-
-	acc.Lo += mulFold64(accs[2]^readU64(secret, 27), accs[3]^readU64(secret, 35))
-	acc.Hi += mulFold64(accs[2]^readU64(secret, 27+hi_off), accs[3]^readU64(secret, 35+hi_off))
-
-	acc.Lo += mulFold64(accs[4]^readU64(secret, 43), accs[5]^readU64(secret, 51))
-	acc.Hi += mulFold64(accs[4]^readU64(secret, 43+hi_off), accs[5]^readU64(secret, 51+hi_off))
-
-	acc.Lo += mulFold64(accs[6]^readU64(secret, 59), accs[7]^readU64(secret, 67))
-	acc.Hi += mulFold64(accs[6]^readU64(secret, 59+hi_off), accs[7]^readU64(secret, 67+hi_off))
-
-	acc.Lo = xxh3Avalanche(acc.Lo)
-	acc.Hi = xxh3Avalanche(acc.Hi)
-
-	return acc
 }
