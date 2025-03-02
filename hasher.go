@@ -50,6 +50,23 @@ func (h *Hasher) Reset() {
 	h.len = 0
 }
 
+// ResetSeed will reset the hash and set a new seed.
+// This will change the original state used by Reset.
+func (h *Hasher) ResetSeed(seed uint64) {
+	h.Reset()
+	// Set key if not set before.
+	if h.seed == 0 && seed != 0 {
+		h.key = ptr(&[secretSize]byte{})
+	}
+	// Re-init seed.
+	if seed == 0 {
+		h.key = nil
+	} else if seed != h.seed {
+		initSecret(h.key, seed)
+	}
+	h.seed = seed
+}
+
 // BlockSize returns the hash's underlying block size.
 // The Write method will accept any amount of data, but
 // it may operate more efficiently if all writes are a
