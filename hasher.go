@@ -111,7 +111,9 @@ func (h *Hasher) updateString(buf string) {
 
 	// On first write, if more than 1 block, process without copy.
 	for h.len == 0 && len(buf) > len(h.buf) {
-		if hasAVX2 {
+		if hasAVX512 {
+			accumBlockAVX512(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+		} else if hasAVX2 {
 			accumBlockAVX2(&h.acc, *(*ptr)(ptr(&buf)), h.key)
 		} else if hasSSE2 {
 			accumBlockSSE(&h.acc, *(*ptr)(ptr(&buf)), h.key)
@@ -130,7 +132,9 @@ func (h *Hasher) updateString(buf string) {
 			continue
 		}
 
-		if hasAVX2 {
+		if hasAVX512 {
+			accumBlockAVX512(&h.acc, ptr(&h.buf), h.key)
+		} else if hasAVX2 {
 			accumBlockAVX2(&h.acc, ptr(&h.buf), h.key)
 		} else if hasSSE2 {
 			accumBlockSSE(&h.acc, ptr(&h.buf), h.key)

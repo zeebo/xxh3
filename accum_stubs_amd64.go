@@ -25,6 +25,9 @@ func accumSSE(acc *[8]u64, data, key unsafe.Pointer, len u64)
 func accumBlockAVX2(acc *[8]u64, data, key unsafe.Pointer)
 
 //go:noescape
+func accumBlockAVX512(acc *[8]u64, data, key unsafe.Pointer)
+
+//go:noescape
 func accumBlockSSE(acc *[8]u64, data, key unsafe.Pointer)
 
 func withOverrides(avx512, avx2, sse2 bool, cb func()) {
