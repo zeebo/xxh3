@@ -7,6 +7,327 @@ This package is a port of the [xxh3](https://github.com/Cyan4973/xxHash) library
 
 Upstream has fixed the output as of v0.8.0, and this package matches that.
 
+## Installation
+
+```bash
+go get github.com/zeebo/xxh3
+```
+
+## Usage Examples
+
+### Basic 64-bit Hashing
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/zeebo/xxh3"
+)
+
+func main() {
+    // Hash a byte slice
+    data := []byte("Hello, World!")
+    hash := xxh3.Hash(data)
+    fmt.Printf("Hash: %x\n", hash)
+
+    // Hash a string directly (more efficient than converting to []byte)
+    hash = xxh3.HashString("Hello, World!")
+    fmt.Printf("Hash: %x\n", hash)
+}
+```
+
+### 64-bit Hashing with Seed
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/zeebo/xxh3"
+)
+
+func main() {
+    data := []byte("Hello, World!")
+    seed := uint64(42)
+
+    // Hash with a custom seed
+    hash := xxh3.HashSeed(data, seed)
+    fmt.Printf("Hash with seed: %x\n", hash)
+
+    // Hash string with seed
+    hash = xxh3.HashStringSeed("Hello, World!", seed)
+    fmt.Printf("Hash with seed: %x\n", hash)
+}
+```
+
+### 128-bit Hashing
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/zeebo/xxh3"
+)
+
+func main() {
+    data := []byte("Hello, World!")
+
+    // Get 128-bit hash
+    hash := xxh3.Hash128(data)
+    fmt.Printf("Hash128: Hi=%x Lo=%x\n", hash.Hi, hash.Lo)
+
+    // Convert to bytes (big-endian)
+    bytes := hash.Bytes()
+    fmt.Printf("Hash128 bytes: %x\n", bytes)
+
+    // Hash string with 128-bit output
+    hash = xxh3.HashString128("Hello, World!")
+    fmt.Printf("Hash128: Hi=%x Lo=%x\n", hash.Hi, hash.Lo)
+}
+```
+
+### 128-bit Hashing with Seed
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/zeebo/xxh3"
+)
+
+func main() {
+    data := []byte("Hello, World!")
+    seed := uint64(42)
+
+    // Get 128-bit hash with seed
+    hash := xxh3.Hash128Seed(data, seed)
+    fmt.Printf("Hash128 with seed: Hi=%x Lo=%x\n", hash.Hi, hash.Lo)
+
+    // Hash string with seed
+    hash = xxh3.HashString128Seed("Hello, World!", seed)
+    fmt.Printf("Hash128 with seed: Hi=%x Lo=%x\n", hash.Hi, hash.Lo)
+}
+```
+
+### Streaming/Incremental Hashing (64-bit)
+
+```go
+package main
+
+import (
+    "fmt"
+    "io"
+    "strings"
+    "github.com/zeebo/xxh3"
+)
+
+func main() {
+    // Create a new hasher (implements hash.Hash and hash.Hash64)
+    h := xxh3.New()
+
+    // Write data incrementally
+    h.Write([]byte("Hello, "))
+    h.Write([]byte("World!"))
+
+    // Get the hash
+    hash := h.Sum64()
+    fmt.Printf("Streaming hash: %x\n", hash)
+
+    // Reset and reuse
+    h.Reset()
+    h.Write([]byte("New data"))
+    hash = h.Sum64()
+    fmt.Printf("New hash: %x\n", hash)
+
+    // Use with io.Copy
+    h.Reset()
+    reader := strings.NewReader("Data from reader")
+    io.Copy(h, reader)
+    hash = h.Sum64()
+    fmt.Printf("Hash from reader: %x\n", hash)
+}
+```
+
+### Streaming Hashing with Seed (64-bit)
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/zeebo/xxh3"
+)
+
+func main() {
+    seed := uint64(42)
+
+    // Create hasher with seed
+    h := xxh3.NewSeed(seed)
+    h.Write([]byte("Hello, "))
+    h.Write([]byte("World!"))
+    hash := h.Sum64()
+    fmt.Printf("Streaming hash with seed: %x\n", hash)
+
+    // Change seed dynamically
+    h.ResetSeed(123)
+    h.Write([]byte("Hello, World!"))
+    hash = h.Sum64()
+    fmt.Printf("Hash with new seed: %x\n", hash)
+}
+```
+
+### Streaming/Incremental Hashing (128-bit)
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/zeebo/xxh3"
+)
+
+func main() {
+    // Create a new 128-bit hasher
+    h := xxh3.New128()
+
+    // Write data incrementally
+    h.Write([]byte("Hello, "))
+    h.Write([]byte("World!"))
+
+    // Get the 128-bit hash
+    hash := h.Sum128()
+    fmt.Printf("Streaming hash128: Hi=%x Lo=%x\n", hash.Hi, hash.Lo)
+
+    // Can also use Sum() for hash.Hash interface compatibility
+    result := h.Sum(nil)
+    fmt.Printf("Hash as bytes: %x\n", result)
+}
+```
+
+### Streaming Hashing with Seed (128-bit)
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/zeebo/xxh3"
+)
+
+func main() {
+    seed := uint64(42)
+
+    // Create 128-bit hasher with seed
+    h := xxh3.NewSeed128(seed)
+    h.Write([]byte("Hello, "))
+    h.Write([]byte("World!"))
+    hash := h.Sum128()
+    fmt.Printf("Streaming hash128 with seed: Hi=%x Lo=%x\n", hash.Hi, hash.Lo)
+}
+```
+
+### Using as a Map Key (with 64-bit hash)
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/zeebo/xxh3"
+)
+
+func main() {
+    // Create a map using hash as key
+    cache := make(map[uint64]string)
+
+    data := []string{"apple", "banana", "cherry"}
+    for _, item := range data {
+        hash := xxh3.HashString(item)
+        cache[hash] = item
+    }
+
+    // Lookup
+    lookupKey := "banana"
+    hash := xxh3.HashString(lookupKey)
+    if value, ok := cache[hash]; ok {
+        fmt.Printf("Found: %s\n", value)
+    }
+}
+```
+
+### File Hashing Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "io"
+    "os"
+    "github.com/zeebo/xxh3"
+)
+
+func hashFile(filename string) (uint64, error) {
+    file, err := os.Open(filename)
+    if err != nil {
+        return 0, err
+    }
+    defer file.Close()
+
+    h := xxh3.New()
+    if _, err := io.Copy(h, file); err != nil {
+        return 0, err
+    }
+
+    return h.Sum64(), nil
+}
+
+func main() {
+    hash, err := hashFile("example.txt")
+    if err != nil {
+        fmt.Printf("Error: %v\n", err)
+        return
+    }
+    fmt.Printf("File hash: %x\n", hash)
+}
+```
+
+## API Overview
+
+### One-shot Hashing Functions
+
+**64-bit:**
+- `Hash([]byte) uint64` - Hash a byte slice
+- `HashString(string) uint64` - Hash a string
+- `HashSeed([]byte, uint64) uint64` - Hash with custom seed
+- `HashStringSeed(string, uint64) uint64` - Hash string with custom seed
+
+**128-bit:**
+- `Hash128([]byte) Uint128` - Hash a byte slice (128-bit)
+- `HashString128(string) Uint128` - Hash a string (128-bit)
+- `Hash128Seed([]byte, uint64) Uint128` - Hash with custom seed (128-bit)
+- `HashString128Seed(string, uint64) Uint128` - Hash string with custom seed (128-bit)
+
+### Streaming Hashers
+
+**64-bit:**
+- `New() *Hasher` - Create new 64-bit hasher (implements `hash.Hash` and `hash.Hash64`)
+- `NewSeed(uint64) *Hasher` - Create new 64-bit hasher with seed
+- `(*Hasher).Sum64() uint64` - Get 64-bit hash result
+
+**128-bit:**
+- `New128() *Hasher128` - Create new 128-bit hasher (implements `hash.Hash`)
+- `NewSeed128(uint64) *Hasher128` - Create new 128-bit hasher with seed
+- `(*Hasher128).Sum128() Uint128` - Get 128-bit hash result
+
+### Types
+
+- `Uint128` - 128-bit hash result with `Hi` and `Lo` uint64 fields
+  - `Bytes() [16]byte` - Convert to big-endian byte array
+
 ---
 
 # Benchmarks
