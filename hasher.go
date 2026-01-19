@@ -117,6 +117,8 @@ func (h *Hasher) updateString(buf string) {
 			accumBlockAVX2(&h.acc, *(*ptr)(ptr(&buf)), h.key)
 		} else if hasSSE2 {
 			accumBlockSSE(&h.acc, *(*ptr)(ptr(&buf)), h.key)
+		} else if hasNEON {
+			accumBlockNEON(&h.acc, *(*ptr)(ptr(&buf)), h.key)
 		} else {
 			accumBlockScalar(&h.acc, *(*ptr)(ptr(&buf)), h.key)
 		}
@@ -138,6 +140,8 @@ func (h *Hasher) updateString(buf string) {
 			accumBlockAVX2(&h.acc, ptr(&h.buf), h.key)
 		} else if hasSSE2 {
 			accumBlockSSE(&h.acc, ptr(&h.buf), h.key)
+		} else if hasNEON {
+			accumBlockNEON(&h.acc, ptr(&h.buf), h.key)
 		} else {
 			accumBlockScalar(&h.acc, ptr(&h.buf), h.key)
 		}
@@ -172,6 +176,8 @@ func (h *Hasher) Sum64() uint64 {
 			accumAVX2(&accs, ptr(&h.buf[0]), h.key, h.len)
 		} else if hasSSE2 {
 			accumSSE(&accs, ptr(&h.buf[0]), h.key, h.len)
+		} else if hasNEON {
+			accumNEON(&accs, ptr(&h.buf[0]), h.key, h.len)
 		} else {
 			accumScalar(&accs, ptr(&h.buf[0]), h.key, h.len)
 		}
@@ -219,6 +225,8 @@ func (h *Hasher) Sum128() Uint128 {
 			accumAVX2(&accs, ptr(&h.buf[0]), h.key, h.len)
 		} else if hasSSE2 {
 			accumSSE(&accs, ptr(&h.buf[0]), h.key, h.len)
+		} else if hasNEON {
+			accumNEON(&accs, ptr(&h.buf[0]), h.key, h.len)
 		} else {
 			accumScalar(&accs, ptr(&h.buf[0]), h.key, h.len)
 		}
