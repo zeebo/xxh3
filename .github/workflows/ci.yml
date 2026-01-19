@@ -42,7 +42,7 @@ jobs:
       - name: vet
         run: go vet ./...
       - name: fmt
-        run: gofmt -w ./...
+        run: gofmt -w .
       - name: generate
         working-directory: avo
         run: go generate -v -x
