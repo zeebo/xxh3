@@ -71,11 +71,13 @@ func writeU64(p ptr, o ui, v u64) {
 const secretSize = 192
 
 func initSecret(secret ptr, seed u64) {
-	for i := ui(0); i < secretSize/16; i++ {
-		lo := readU64(key, 16*i) + seed
-		hi := readU64(key, 16*i+8) - seed
-		writeU64(secret, 16*i, lo)
-		writeU64(secret, 16*i+8, hi)
+	// Stride the offset directly (i += 16) instead of indexing groups (16*i),
+	// dropping the per-iteration multiply. Trims a few percent off this fixed
+	// cost on the seeded long-input path, which re-derives the full 192-byte
+	// secret on every call.
+	for i := ui(0); i < secretSize; i += 16 {
+		writeU64(secret, i, readU64(key, i)+seed)
+		writeU64(secret, i+8, readU64(key, i+8)-seed)
 	}
 }
 
