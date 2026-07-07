@@ -28,8 +28,10 @@ Upstream has fixed the output as of v0.8.0, and this package matches that.
 
 ### Large Sizes
 
-The seed and 128-bit variants share the same bulk loop and land within ~1% of
-the figures below on these sizes, so only the 64-bit default is shown.
+64-bit default is shown. The 128-bit variant adds only a small finalization
+(within a few % here). A non-zero seed re-derives the 192-byte secret on every
+call, so seeded hashing is markedly slower at these sizes (e.g. 512 B SSE2:
+20.3 vs 11.2 ns/op) and only amortizes to <1% by ~100KB.
 
 | Bytes     | Rate                       | SSE2 Rate                  | AVX2 Rate                  | AVX512 Rate                 |
 |-----------|----------------------------|----------------------------|----------------------------|-----------------------------|
