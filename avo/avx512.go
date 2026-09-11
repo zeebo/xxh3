@@ -28,7 +28,12 @@ func AVX512() {
 
 		Label("load")
 		{
-			VMOVDQU64(acc.Offset(0x00), a[0])
+			// The caller has just written acc with 16-byte stores. Read it back in 16-byte
+			// pieces so store-to-load forwarding does not fail on a load spanning several.
+			VMOVDQU(acc.Offset(0x00), a[0].AsX())
+			VINSERTI32X4(Imm(1), acc.Offset(0x10), a[0], a[0])
+			VINSERTI32X4(Imm(2), acc.Offset(0x20), a[0], a[0])
+			VINSERTI32X4(Imm(3), acc.Offset(0x30), a[0], a[0])
 			VMOVDQU64(primeData, prime)
 		}
 		// Load key at 8 byte offsets in the order we use it.

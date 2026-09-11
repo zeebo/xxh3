@@ -42,8 +42,12 @@ func AVX() {
 
 		Label("load")
 		{
-			VMOVDQU(acc.Offset(0x00), a[0][0])
-			VMOVDQU(acc.Offset(0x20), a[0][1])
+			// The caller has just written acc with 16-byte stores. Read it back in 16-byte
+			// pieces so store-to-load forwarding does not fail on a load spanning several.
+			VMOVDQU(acc.Offset(0x00), a[0][0].AsX())
+			VINSERTI128(Imm(1), acc.Offset(0x10), a[0][0], a[0][0])
+			VMOVDQU(acc.Offset(0x20), a[0][1].AsX())
+			VINSERTI128(Imm(1), acc.Offset(0x30), a[0][1], a[0][1])
 			VMOVDQU(primeData, prime)
 
 			CMPQ(plen, U32(1024))
