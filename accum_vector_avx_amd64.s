@@ -11,21 +11,23 @@ GLOBL prime_avx<>(SB), RODATA|NOPTR, $32
 // func accumAVX2(acc *[8]uint64, data *byte, key *byte, len uint64)
 // Requires: AVX, AVX2, MMX+
 TEXT ·accumAVX2(SB), NOSPLIT, $0-32
-	MOVQ    acc+0(FP), AX
-	MOVQ    data+8(FP), CX
-	MOVQ    key+16(FP), DX
-	MOVQ    key+16(FP), BX
-	MOVQ    len+24(FP), SI
-	VMOVDQU (AX), Y1
-	VMOVDQU 32(AX), Y2
-	VMOVDQU prime_avx<>+0(SB), Y0
-	CMPQ    SI, $0x00000400
-	JLE     accum
-	VMOVDQU 32(DX), Y5
-	VMOVDQU 40(DX), Y6
-	VMOVDQU 48(DX), Y7
-	VMOVDQU 56(DX), Y8
-	VMOVDQU 64(DX), Y9
+	MOVQ        acc+0(FP), AX
+	MOVQ        data+8(FP), CX
+	MOVQ        key+16(FP), DX
+	MOVQ        key+16(FP), BX
+	MOVQ        len+24(FP), SI
+	VMOVDQU     (AX), X1
+	VINSERTI128 $0x01, 16(AX), Y1, Y1
+	VMOVDQU     32(AX), X2
+	VINSERTI128 $0x01, 48(AX), Y2, Y2
+	VMOVDQU     prime_avx<>+0(SB), Y0
+	CMPQ        SI, $0x00000400
+	JLE         accum
+	VMOVDQU     32(DX), Y5
+	VMOVDQU     40(DX), Y6
+	VMOVDQU     48(DX), Y7
+	VMOVDQU     56(DX), Y8
+	VMOVDQU     64(DX), Y9
 
 accum_large:
 	VMOVDQU    (CX), Y3
