@@ -38,26 +38,26 @@ type str struct {
 }
 
 func readU8(p ptr, o ui) uint8 {
-	return *(*uint8)(ptr(ui(p) + o))
+	return *(*uint8)(unsafe.Add(p, o))
 }
 
 func readU16(p ptr, o ui) uint16 {
-	b := (*[2]byte)(ptr(ui(p) + o))
+	b := (*[2]byte)(unsafe.Add(p, o))
 	return uint16(b[0]) | uint16(b[1])<<8
 }
 
 func readU32(p ptr, o ui) uint32 {
-	b := (*[4]byte)(ptr(ui(p) + o))
+	b := (*[4]byte)(unsafe.Add(p, o))
 	return binary.LittleEndian.Uint32(b[:])
 }
 
 func readU64(p ptr, o ui) uint64 {
-	b := (*[8]byte)(ptr(ui(p) + o))
+	b := (*[8]byte)(unsafe.Add(p, o))
 	return binary.LittleEndian.Uint64(b[:])
 }
 
 func writeU64(p ptr, o ui, v u64) {
-	b := (*[8]byte)(ptr(ui(p) + o))
+	b := (*[8]byte)(unsafe.Add(p, o))
 	b[0] = byte(v)
 	b[1] = byte(v >> 8)
 	b[2] = byte(v >> 16)
