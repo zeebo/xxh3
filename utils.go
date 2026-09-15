@@ -71,7 +71,7 @@ func writeU64(p ptr, o ui, v u64) {
 const secretSize = 192
 
 func initSecret(secret ptr, seed u64) {
-	for i := ui(0); i < secretSize/16; i++ {
+	for i := range ui(secretSize / 16) {
 		lo := readU64(key, 16*i) + seed
 		hi := readU64(key, 16*i+8) - seed
 		writeU64(secret, 16*i, lo)

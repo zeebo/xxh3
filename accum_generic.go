@@ -13,7 +13,7 @@ func accumScalar(accs *[8]u64, p, secret ptr, l u64) {
 		k := secret
 
 		// accs
-		for i := 0; i < 16; i++ {
+		for range 16 {
 			{
 				const off = 0
 				dv0 := readU64(p, 8*off)
@@ -118,7 +118,7 @@ func accumScalar(accs *[8]u64, p, secret ptr, l u64) {
 	if l > 0 {
 		t, k := (l-1)/_stripe, secret
 
-		for i := u64(0); i < t; i++ {
+		for range t {
 			{
 				const off = 0
 				dv0 := readU64(p, 8*off)
@@ -238,7 +238,7 @@ func accumBlockScalar(accs *[8]u64, p, secret ptr) {
 		return
 	}
 	// accs
-	for i := 0; i < 16; i++ {
+	for range 16 {
 		{
 			const off = 0
 			dv0 := readU64(p, 8*off)
@@ -343,7 +343,7 @@ func accumScalarSeed(accs *[8]u64, p, secret ptr, l u64) {
 		k := secret
 
 		// accs
-		for i := 0; i < 16; i++ {
+		for range 16 {
 			{
 				const off = 0
 				dv0 := readU64(p, 8*off)
@@ -448,7 +448,7 @@ func accumScalarSeed(accs *[8]u64, p, secret ptr, l u64) {
 	if l > 0 {
 		t, k := (l-1)/_stripe, secret
 
-		for i := u64(0); i < t; i++ {
+		for range t {
 			{
 				const off = 0
 				dv0 := readU64(p, 8*off)
@@ -567,7 +567,7 @@ func accumBlockScalarSeed(accs *[8]u64, p, secret ptr) {
 	// accs
 	{
 		secret := secret
-		for i := 0; i < 16; i++ {
+		for range 16 {
 			{
 				const off = 0
 				dv0 := readU64(p, 8*off)
