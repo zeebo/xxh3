@@ -192,7 +192,9 @@ func (h *Hasher) Sum64() uint64 {
 		if h.seed == 0 {
 			return Hash(h.buf[:h.len])
 		}
-		return HashSeed(h.buf[:h.len], h.seed)
+		if h.len <= 240 {
+			return HashSeed(h.buf[:h.len], h.seed)
+		}
 	}
 
 	l := h.blk*_block + h.len
@@ -200,8 +202,9 @@ func (h *Hasher) Sum64() uint64 {
 	accs := h.acc
 
 	if h.len > 0 {
-		// We are only ever doing 1 block here, so no avx512.
-		if hasAVX2 {
+		if hasAVX512 && h.blk == 0 && h.len >= avx512Switch {
+			accumAVX512(&accs, ptr(&h.buf[0]), h.key, h.len)
+		} else if hasAVX2 {
 			accumAVX2(&accs, ptr(&h.buf[0]), h.key, h.len)
 		} else if hasSSE2 {
 			accumSSE(&accs, ptr(&h.buf[0]), h.key, h.len)
@@ -241,7 +244,9 @@ func (h *Hasher) Sum128() Uint128 {
 		if h.seed == 0 {
 			return Hash128(h.buf[:h.len])
 		}
-		return Hash128Seed(h.buf[:h.len], h.seed)
+		if h.len <= 240 {
+			return Hash128Seed(h.buf[:h.len], h.seed)
+		}
 	}
 
 	l := h.blk*_block + h.len
@@ -249,8 +254,9 @@ func (h *Hasher) Sum128() Uint128 {
 	accs := h.acc
 
 	if h.len > 0 {
-		// We are only ever doing 1 block here, so no avx512.
-		if hasAVX2 {
+		if hasAVX512 && h.blk == 0 && h.len >= avx512Switch {
+			accumAVX512(&accs, ptr(&h.buf[0]), h.key, h.len)
+		} else if hasAVX2 {
 			accumAVX2(&accs, ptr(&h.buf[0]), h.key, h.len)
 		} else if hasSSE2 {
 			accumSSE(&accs, ptr(&h.buf[0]), h.key, h.len)
