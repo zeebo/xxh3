@@ -6,6 +6,11 @@ import (
 	"testing"
 )
 
+const (
+	chunkedWriteSize      = 1 << 20
+	chunkedWriteChunkSize = 32 << 10
+)
+
 func TestHasherCompat(t *testing.T) {
 	buf := make([]byte, 40970)
 	for i := range buf {
@@ -40,6 +45,28 @@ func TestHasherCompat(t *testing.T) {
 		withSSE2(check)
 		withGeneric(check)
 	}
+
+	chunked := make([]byte, _block+1+3*chunkedWriteChunkSize)
+	for i := range chunked {
+		chunked[i] = byte(uint64(i+1) * 2654435761)
+	}
+	check := func() {
+		h := New()
+		h.Write(chunked[:_block+1])
+		for start := _block + 1; start < len(chunked); start += chunkedWriteChunkSize {
+			h.Write(chunked[start:min(start+chunkedWriteChunkSize, len(chunked))])
+		}
+		if want, got := Hash(chunked), h.Sum64(); want != got {
+			t.Fatalf("chunked Sum64: %016x != %016x", got, want)
+		}
+		if want, got := Hash128(chunked), h.Sum128(); want != got {
+			t.Fatalf("chunked Sum128: %016x != %016x", got, want)
+		}
+	}
+	withAVX512(check)
+	withAVX2(check)
+	withSSE2(check)
+	withGeneric(check)
 }
 
 func TestHasher128Compat(t *testing.T) {
@@ -241,6 +268,75 @@ func BenchmarkHasher64(b *testing.B) {
 				})
 			}
 		})
+	}
+}
+
+func BenchmarkHasher64Chunked(b *testing.B) {
+	buf := make([]byte, chunkedWriteSize)
+	for i := range buf {
+		buf[i] = byte(uint64(i+1) * 2654435761)
+	}
+	text := string(buf)
+
+	for _, prefix := range []int{1, _stripe, _block + 1} {
+		b.Run(fmt.Sprintf("prefix-%d", prefix), func(b *testing.B) {
+			run := func(b *testing.B) {
+				b.Run("bytes", func(b *testing.B) {
+					benchmarkHasher64Chunked(b, buf, text, prefix, false)
+				})
+				b.Run("string", func(b *testing.B) {
+					benchmarkHasher64Chunked(b, buf, text, prefix, true)
+				})
+			}
+
+			b.Run("go", func(b *testing.B) {
+				withGeneric(func() { run(b) })
+			})
+			if hasAVX512 {
+				b.Run("avx512", func(b *testing.B) {
+					withAVX512(func() { run(b) })
+				})
+			}
+			if hasAVX2 {
+				b.Run("avx2", func(b *testing.B) {
+					withAVX2(func() { run(b) })
+				})
+			}
+			if hasSSE2 {
+				b.Run("sse2", func(b *testing.B) {
+					withSSE2(func() { run(b) })
+				})
+			}
+		})
+	}
+}
+
+func benchmarkHasher64Chunked(
+	b *testing.B,
+	buf []byte,
+	text string,
+	prefix int,
+	stringInput bool,
+) {
+	h := New()
+
+	b.ReportAllocs()
+	b.SetBytes(int64(len(buf)))
+	b.ResetTimer()
+	for range b.N {
+		h.Reset()
+		if stringInput {
+			h.WriteString(text[:prefix])
+			for start := prefix; start < len(text); start += chunkedWriteChunkSize {
+				h.WriteString(text[start:min(start+chunkedWriteChunkSize, len(text))])
+			}
+		} else {
+			h.Write(buf[:prefix])
+			for start := prefix; start < len(buf); start += chunkedWriteChunkSize {
+				h.Write(buf[start:min(start+chunkedWriteChunkSize, len(buf))])
+			}
+		}
+		_ = h.Sum64()
 	}
 }
 

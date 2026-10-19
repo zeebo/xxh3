@@ -108,9 +108,61 @@ func (h *Hasher) updateString(buf string) {
 		h.key = key
 		h.Reset()
 	}
+	if len(buf) == 0 {
+		return
+	}
 
-	// On first write, if more than 1 block, process without copy.
-	for h.len == 0 && len(buf) > len(h.buf) {
+	if h.len > 0 {
+		need := len(h.buf) - int(h.len)
+		if len(buf) <= need {
+			h.len += u64(copy(h.buf[h.len:], buf))
+			return
+		}
+		copy(h.buf[h.len:], buf[:need])
+		buf = buf[need:]
+
+		if hasAVX512 {
+			accumBlockAVX512(&h.acc, ptr(&h.buf), h.key)
+		} else if hasAVX2 {
+			accumBlockAVX2(&h.acc, ptr(&h.buf), h.key)
+		} else if hasSSE2 {
+			accumBlockSSE(&h.acc, ptr(&h.buf), h.key)
+		} else if hasNEON {
+			accumBlockNEON(&h.acc, ptr(&h.buf), h.key)
+		} else {
+			accumBlockScalar(&h.acc, ptr(&h.buf), h.key)
+		}
+		h.blk++
+		h.len = _stripe
+		copy(h.buf[:_stripe], h.buf[_block:])
+
+		if len(buf) <= _block {
+			h.len += u64(copy(h.buf[h.len:], buf))
+			return
+		}
+
+		// The retained stripe and the next input bytes straddle one block.
+		// Consuming only the missing bytes leaves a complete trailing stripe
+		// in buf, so subsequent blocks can be accumulated without copying.
+		const bridge = _block - _stripe
+		copy(h.buf[_stripe:_block], buf[:bridge])
+		if hasAVX512 {
+			accumBlockAVX512(&h.acc, ptr(&h.buf), h.key)
+		} else if hasAVX2 {
+			accumBlockAVX2(&h.acc, ptr(&h.buf), h.key)
+		} else if hasSSE2 {
+			accumBlockSSE(&h.acc, ptr(&h.buf), h.key)
+		} else if hasNEON {
+			accumBlockNEON(&h.acc, ptr(&h.buf), h.key)
+		} else {
+			accumBlockScalar(&h.acc, ptr(&h.buf), h.key)
+		}
+		h.blk++
+		h.len = 0
+		buf = buf[bridge:]
+	}
+
+	for len(buf) > len(h.buf) {
 		if hasAVX512 {
 			accumBlockAVX512(&h.acc, *(*ptr)(ptr(&buf)), h.key)
 		} else if hasAVX2 {
@@ -126,30 +178,7 @@ func (h *Hasher) updateString(buf string) {
 		h.blk++
 	}
 
-	for len(buf) > 0 {
-		if h.len < u64(len(h.buf)) {
-			n := copy(h.buf[h.len:], buf)
-			h.len += u64(n)
-			buf = buf[n:]
-			continue
-		}
-
-		if hasAVX512 {
-			accumBlockAVX512(&h.acc, ptr(&h.buf), h.key)
-		} else if hasAVX2 {
-			accumBlockAVX2(&h.acc, ptr(&h.buf), h.key)
-		} else if hasSSE2 {
-			accumBlockSSE(&h.acc, ptr(&h.buf), h.key)
-		} else if hasNEON {
-			accumBlockNEON(&h.acc, ptr(&h.buf), h.key)
-		} else {
-			accumBlockScalar(&h.acc, ptr(&h.buf), h.key)
-		}
-
-		h.blk++
-		h.len = _stripe
-		copy(h.buf[:_stripe], h.buf[_block:])
-	}
+	h.len = u64(copy(h.buf[:], buf))
 }
 
 // Sum64 returns the 64-bit hash of the written data.
