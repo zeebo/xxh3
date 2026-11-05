@@ -29,7 +29,8 @@ func AVX() {
 		prime := YMM()
 
 		// a[0] contains merged values
-		// a[1] is a temporary accumulator used for the accum_large loop.
+		// a[1] is the block sum used for the accum_large loop. It starts fresh each block,
+		// so the chain carried between blocks is one add plus the scramble.
 		a := [2][2]VecVirtual{{YMM(), YMM()}, {YMM(), YMM()}}
 
 		advance := func(n int) {
@@ -175,6 +176,58 @@ func AVX() {
 		}
 	}
 
+	{
+		// accumBlocksAVX2 accumulates and scrambles blocks of 1024 bytes, at least one.
+		TEXT("accumBlocksAVX2", NOSPLIT, "func(acc *[8]uint64, data, key *byte, blocks uint64)")
+
+		acc := Mem{Base: Load(Param("acc"), GP64())}
+		data := Mem{Base: Load(Param("data"), GP64())}
+		key := Mem{Base: Load(Param("key"), GP64())}
+		blocks := Load(Param("blocks"), GP64())
+		prime := YMM()
+		a := [2][2]VecVirtual{{YMM(), YMM()}, {YMM(), YMM()}}
+
+		// Preload keys as accumAVX2 does.
+		var loadedOffset = make(map[int]Op)
+		VMOVDQU(acc.Offset(0x00), a[0][0])
+		VMOVDQU(acc.Offset(0x20), a[0][1])
+		VMOVDQU(primeData, prime)
+		used := 0
+		for i := 0; i < 16; i++ {
+			offset := i * 8
+			nextOffset := i*8 + 32
+			if used < 5 {
+				loadedOffset[nextOffset] = YMM()
+				VMOVDQU(key.Offset(nextOffset), loadedOffset[nextOffset])
+				used++
+			} else if loadedOffset[nextOffset] == nil {
+				loadedOffset[nextOffset] = key.Offset(nextOffset)
+			}
+			if loadedOffset[offset] == nil {
+				loadedOffset[offset] = key.Offset(offset)
+			}
+		}
+
+		Label("accum_blocks")
+		{
+			for i := 0; i < 16; i++ {
+				avx2accumLoaded(data, a, 64*i, loadedOffset[i*8], loadedOffset[i*8+32], true, i == 0)
+			}
+			VPADDQ(a[0][0], a[1][0], a[0][0])
+			VPADDQ(a[0][1], a[1][1], a[0][1])
+			ADDQ(U32(1024), data.Base)
+			avx2scramble(prime, key, a[0], 8*16)
+
+			DECQ(blocks)
+			JNZ(LabelRef("accum_blocks"))
+		}
+
+		VMOVDQU(a[0][0], acc.Offset(0x00))
+		VMOVDQU(a[0][1], acc.Offset(0x20))
+		VZEROUPPER()
+		RET()
+	}
+
 	Generate()
 }
 
@@ -210,19 +263,15 @@ func avx2accum(data Mem, a [2]VecVirtual, doff, koff int, key Mem, prefetch bool
 	VPMULUDQ(y11, y12, y11)
 	VPSHUFD(Imm(78), y0, y0)
 	VPSHUFD(Imm(78), y10, y10)
+	// Sum product and swap first: one dependent add per stripe on a.
+	VPADDQ(y0, y1, y1)
+	VPADDQ(y10, y11, y11)
 	VPADDQ(a[0], y1, a[0])
 	VPADDQ(a[1], y11, a[1])
-	VPADDQ(a[0], y0, a[0])
-	VPADDQ(a[1], y10, a[1])
 }
 
 func avx2accumLoaded(data Mem, a [2][2]VecVirtual, doff int, k0, k1 Op, prefetch, initA1 bool) {
 	y0, y1, y2, y10, y11, y12 := YMM(), YMM(), YMM(), YMM(), YMM(), YMM()
-	if initA1 {
-		// Write to a[1] to initialize it.
-		y0 = a[1][0]
-		y10 = a[1][1]
-	}
 	VMOVDQU(data.Offset(doff+0x00), y0)
 	VMOVDQU(data.Offset(doff+0x20), y10)
 	if prefetch {
@@ -237,10 +286,15 @@ func avx2accumLoaded(data Mem, a [2][2]VecVirtual, doff int, k0, k1 Op, prefetch
 	VPMULUDQ(y11, y12, y11)
 	VPSHUFD(Imm(78), y0, y0)
 	VPSHUFD(Imm(78), y10, y10)
-	VPADDQ(a[0][0], y1, a[0][0])
-	VPADDQ(a[0][1], y11, a[0][1])
-	if !initA1 {
-		VPADDQ(a[1][0], y0, a[1][0])
-		VPADDQ(a[1][1], y10, a[1][1])
+	if initA1 {
+		// Initialize a[1] without the carried a[0], so the next block's stripes don't wait for the scramble.
+		VPADDQ(y0, y1, a[1][0])
+		VPADDQ(y10, y11, a[1][1])
+	} else {
+		// Sum product and swap first: one dependent add per stripe on a[1].
+		VPADDQ(y0, y1, y1)
+		VPADDQ(y10, y11, y11)
+		VPADDQ(a[1][0], y1, a[1][0])
+		VPADDQ(a[1][1], y11, a[1][1])
 	}
 }

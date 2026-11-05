@@ -123,6 +123,42 @@ func SSE() {
 		}
 	}
 
+	{
+		// accumBlocksSSE accumulates and scrambles blocks of 1024 bytes, at least one.
+		TEXT("accumBlocksSSE", NOSPLIT, "func(acc *[8]uint64, data, key *byte, blocks uint64)")
+
+		acc := Mem{Base: Load(Param("acc"), GP64())}
+		data := Mem{Base: Load(Param("data"), GP64())}
+		key := Mem{Base: Load(Param("key"), GP64())}
+		blocks := Load(Param("blocks"), GP64())
+		prime := XMM()
+		a := [4]VecVirtual{XMM(), XMM(), XMM(), XMM()}
+
+		MOVOU(acc.Offset(0x00), a[0])
+		MOVOU(acc.Offset(0x10), a[1])
+		MOVOU(acc.Offset(0x20), a[2])
+		MOVOU(acc.Offset(0x30), a[3])
+		MOVOU(primeData, prime)
+
+		Label("accum_blocks")
+		{
+			for i := 0; i < 16; i++ {
+				sse2accum(data, a, 64*i, 8*i, key)
+			}
+			ADDQ(U32(1024), data.Base)
+			sse2scramble(prime, key, a, 8*16)
+
+			DECQ(blocks)
+			JNZ(LabelRef("accum_blocks"))
+		}
+
+		MOVOU(a[0], acc.Offset(0x00))
+		MOVOU(a[1], acc.Offset(0x10))
+		MOVOU(a[2], acc.Offset(0x20))
+		MOVOU(a[3], acc.Offset(0x30))
+		RET()
+	}
+
 	Generate()
 }
 

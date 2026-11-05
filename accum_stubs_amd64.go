@@ -32,6 +32,15 @@ func accumBlockAVX512(acc *[8]u64, data, key unsafe.Pointer)
 //go:noescape
 func accumBlockSSE(acc *[8]u64, data, key unsafe.Pointer)
 
+//go:noescape
+func accumBlocksAVX2(acc *[8]u64, data, key unsafe.Pointer, blocks u64)
+
+//go:noescape
+func accumBlocksAVX512(acc *[8]u64, data, key unsafe.Pointer, blocks u64)
+
+//go:noescape
+func accumBlocksSSE(acc *[8]u64, data, key unsafe.Pointer, blocks u64)
+
 func accumNEON(acc *[8]u64, data, key unsafe.Pointer, len u64) { panic("unreachable") }
 func accumBlockNEON(acc *[8]u64, data, key unsafe.Pointer)     { panic("unreachable") }
 
