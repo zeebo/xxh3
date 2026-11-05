@@ -22,18 +22,19 @@ func AVX512() {
 		key := Mem{Base: Load(Param("key"), GP64())}
 		plen := Load(Param("len"), GP64())
 		prime := ZMM()
-		// a[0] contains merged values
-		// a[1-3] is a temporary accumulators used for the accum_large loop.
-		a := [4]VecVirtual{ZMM(), ZMM(), ZMM(), ZMM()}
+		// p are per-block partial sums that never include the carried a,
+		// so the next block's stripes overlap the previous block's scramble.
+		a := ZMM()
+		p := [4]VecVirtual{ZMM(), ZMM(), ZMM(), ZMM()}
 
 		Label("load")
 		{
 			// The caller has just written acc with 16-byte stores. Read it back in 16-byte
 			// pieces so store-to-load forwarding does not fail on a load spanning several.
-			VMOVDQU(acc.Offset(0x00), a[0].AsX())
-			VINSERTI32X4(Imm(1), acc.Offset(0x10), a[0], a[0])
-			VINSERTI32X4(Imm(2), acc.Offset(0x20), a[0], a[0])
-			VINSERTI32X4(Imm(3), acc.Offset(0x30), a[0], a[0])
+			VMOVDQU(acc.Offset(0x00), a.AsX())
+			VINSERTI32X4(Imm(1), acc.Offset(0x10), a, a)
+			VINSERTI32X4(Imm(2), acc.Offset(0x20), a, a)
+			VINSERTI32X4(Imm(3), acc.Offset(0x30), a, a)
 			VMOVDQU64(primeData, prime)
 		}
 		// Load key at 8 byte offsets in the order we use it.
@@ -57,14 +58,14 @@ func AVX512() {
 			JLE(LabelRef("accum"))
 
 			for i := 0; i < 16; i += 2 {
-				avx512accumSplitTwo(data, a, 64*i, keyReg[i], keyReg[i+1], true, i == 0)
+				avx512accumSplitTwo(data, p, 64*i, keyReg[i], keyReg[i+1], true, i == 0)
 			}
-			// Sum into a[0]
-			VPADDQ(a[0], a[1], a[0]) // a0 = a0 + a1
-			VPADDQ(a[2], a[3], a[2]) // a2 = a2 + a3
-			VPADDQ(a[0], a[2], a[0]) // a0 = a0 + a2
+			VPADDQ(p[0], p[1], p[0])
+			VPADDQ(p[2], p[3], p[2])
+			VPADDQ(p[0], p[2], p[0])
+			VPADDQ(a, p[0], a)
 			advance(16)
-			avx512scramble(prime, keyReg[16], a[0])
+			avx512scramble(prime, keyReg[16], a)
 
 			JMP(LabelRef("accum_large"))
 		}
@@ -76,7 +77,7 @@ func AVX512() {
 				CMPQ(plen, Imm(64))
 				JLE(LabelRef("finalize"))
 
-				avx512accum(data, a[0], 0, keyReg[i], false)
+				avx512accum(data, a, 0, keyReg[i], false)
 				advance(1)
 			}
 		}
@@ -89,12 +90,12 @@ func AVX512() {
 			SUBQ(Imm(64), data.Base)
 			ADDQ(plen, data.Base)
 
-			avx512accum(data, a[0], 0, key121, false)
+			avx512accum(data, a, 0, key121, false)
 		}
 
 		Label("return")
 		{
-			VMOVDQU64(a[0], acc.Offset(0x00))
+			VMOVDQU64(a, acc.Offset(0x00))
 			VZEROUPPER()
 			RET()
 		}
@@ -107,13 +108,14 @@ func AVX512() {
 		data := Mem{Base: Load(Param("data"), GP64())}
 		key := Mem{Base: Load(Param("key"), GP64())}
 		prime := ZMM()
-		// a[0] contains merged values
-		// a[1-3] is a temporary accumulators used for the accum_large loop.
-		a := [4]VecVirtual{ZMM(), ZMM(), ZMM(), ZMM()}
+		// p are per-block partial sums that never include the carried a,
+		// so the next block's stripes overlap the previous block's scramble.
+		a := ZMM()
+		p := [4]VecVirtual{ZMM(), ZMM(), ZMM(), ZMM()}
 
 		Label("load")
 		{
-			VMOVDQU64(acc.Offset(0x00), a[0])
+			VMOVDQU64(acc.Offset(0x00), a)
 			VMOVDQU64(primeData, prime)
 		}
 
@@ -125,22 +127,65 @@ func AVX512() {
 				VMOVDQU64(key.Offset(i*8), key1)
 				VMOVDQU64(key.Offset(i*8+8), key2)
 
-				avx512accumSplitTwo(data, a, 64*i, key1, key2, false, i == 0)
+				avx512accumSplitTwo(data, p, 64*i, key1, key2, false, i == 0)
 			}
-			// Sum into a[0]
 			key128 := ZMM()
 			VMOVDQU64(key.Offset(16*8), key128)
-			VPADDQ(a[0], a[1], a[0]) // a0 = a0 + a1
-			VPADDQ(a[2], a[3], a[2]) // a2 = a2 + a3
-			VPADDQ(a[0], a[2], a[0]) // a0 = a0 + a2
-			avx512scramble(prime, key128, a[0])
+			VPADDQ(p[0], p[1], p[0])
+			VPADDQ(p[2], p[3], p[2])
+			VPADDQ(p[0], p[2], p[0])
+			VPADDQ(a, p[0], a)
+			avx512scramble(prime, key128, a)
 		}
 
 		{
-			VMOVDQU64(a[0], acc.Offset(0x00))
+			VMOVDQU64(a, acc.Offset(0x00))
 			VZEROUPPER()
 			RET()
 		}
+	}
+
+	{
+		// accumBlocksAVX512 accumulates and scrambles blocks of 1024 bytes, at least one.
+		TEXT("accumBlocksAVX512", NOSPLIT, "func(acc *[8]uint64, data, key *byte, blocks uint64)")
+
+		acc := Mem{Base: Load(Param("acc"), GP64())}
+		data := Mem{Base: Load(Param("data"), GP64())}
+		key := Mem{Base: Load(Param("key"), GP64())}
+		blocks := Load(Param("blocks"), GP64())
+		prime := ZMM()
+		// p are per-block partial sums that never include the carried a,
+		// so the next block's stripes overlap the previous block's scramble.
+		a := ZMM()
+		p := [4]VecVirtual{ZMM(), ZMM(), ZMM(), ZMM()}
+
+		VMOVDQU64(acc.Offset(0x00), a)
+		VMOVDQU64(primeData, prime)
+		var keyReg [17]VecVirtual
+		for i := range keyReg {
+			keyReg[i] = ZMM()
+			VMOVDQU64(key.Offset(i*8), keyReg[i])
+		}
+
+		Label("accum_blocks")
+		{
+			for i := 0; i < 16; i += 2 {
+				avx512accumSplitTwo(data, p, 64*i, keyReg[i], keyReg[i+1], true, i == 0)
+			}
+			VPADDQ(p[0], p[1], p[0])
+			VPADDQ(p[2], p[3], p[2])
+			VPADDQ(p[0], p[2], p[0])
+			VPADDQ(a, p[0], a)
+			ADDQ(U32(1024), data.Base)
+			avx512scramble(prime, keyReg[16], a)
+
+			DECQ(blocks)
+			JNZ(LabelRef("accum_blocks"))
+		}
+
+		VMOVDQU64(a, acc.Offset(0x00))
+		VZEROUPPER()
+		RET()
 	}
 
 	Generate()
@@ -171,18 +216,20 @@ func avx512accum(data Mem, a VecVirtual, doff int, key VecVirtual, prefetch bool
 	VPSHUFD(Imm(49), y1, y2)
 	VPMULUDQ(y1, y2, y1)
 	VPSHUFD(Imm(78), y0, y0)
+	// Sum the stripe first so a carries one add per stripe.
+	VPADDQ(y0, y1, y1)
 	VPADDQ(a, y1, a)
-	VPADDQ(a, y0, a)
 }
 
-func avx512accumSplitTwo(data Mem, a [4]VecVirtual, doff int, key, key2 VecVirtual, prefetch, initA1 bool) {
+func avx512accumSplitTwo(data Mem, p [4]VecVirtual, doff int, key, key2 VecVirtual, prefetch, first bool) {
 	y0, y1, y2 := ZMM(), ZMM(), ZMM()
 	z0, z1, z2 := ZMM(), ZMM(), ZMM()
-	if initA1 {
-		// Replace destination registers with the accumulator to avoid zeroing and adding.
-		y1 = a[1]
-		z1 = a[2]
-		z0 = a[3]
+	if first {
+		// Replace destination registers with the partial sums to avoid zeroing and adding.
+		y0 = p[0]
+		y1 = p[1]
+		z1 = p[2]
+		z0 = p[3]
 	}
 	VMOVDQU64(data.Offset(doff+0x00), y0)
 	VMOVDQU64(data.Offset(doff+0x40), z0)
@@ -200,10 +247,10 @@ func avx512accumSplitTwo(data Mem, a [4]VecVirtual, doff int, key, key2 VecVirtu
 	VPSHUFD(Imm(78), y0, y0)
 	VPSHUFD(Imm(78), z0, z0)
 
-	if !initA1 {
-		VPADDQ(a[1], y1, a[1])
-		VPADDQ(a[2], z1, a[2])
-		VPADDQ(a[3], z0, a[3])
+	if !first {
+		VPADDQ(p[0], y0, p[0])
+		VPADDQ(p[1], y1, p[1])
+		VPADDQ(p[2], z1, p[2])
+		VPADDQ(p[3], z0, p[3])
 	}
-	VPADDQ(a[0], y0, a[0])
 }

@@ -3,6 +3,7 @@ package xxh3
 import (
 	"encoding/binary"
 	"hash"
+	"unsafe"
 )
 
 // Hasher implements the hash.Hash interface
@@ -162,23 +163,36 @@ func (h *Hasher) updateString(buf string) {
 		buf = buf[bridge:]
 	}
 
-	for len(buf) > len(h.buf) {
-		if hasAVX512 {
-			accumBlockAVX512(&h.acc, *(*ptr)(ptr(&buf)), h.key)
-		} else if hasAVX2 {
-			accumBlockAVX2(&h.acc, *(*ptr)(ptr(&buf)), h.key)
-		} else if hasSSE2 {
-			accumBlockSSE(&h.acc, *(*ptr)(ptr(&buf)), h.key)
-		} else if hasNEON {
-			accumBlockNEON(&h.acc, *(*ptr)(ptr(&buf)), h.key)
-		} else {
-			accumBlockScalar(&h.acc, *(*ptr)(ptr(&buf)), h.key)
-		}
-		buf = buf[_block:]
-		h.blk++
+	// Accumulate whole blocks in place, keeping at most len(h.buf) bytes for the buffer.
+	if len(buf) > len(h.buf) {
+		n := (len(buf) - len(h.buf) + _block - 1) / _block
+		accumBlocks(&h.acc, *(*ptr)(ptr(&buf)), h.key, u64(n))
+		buf = buf[n*_block:]
+		h.blk += u64(n)
 	}
 
 	h.len = u64(copy(h.buf[:], buf))
+}
+
+// accumBlocks accumulates and scrambles n blocks of data, at least one.
+func accumBlocks(acc *[8]u64, data, key ptr, n u64) {
+	switch {
+	case hasAVX512:
+		accumBlocksAVX512(acc, data, key, n)
+	case hasAVX2:
+		accumBlocksAVX2(acc, data, key, n)
+	case hasSSE2:
+		accumBlocksSSE(acc, data, key, n)
+	default:
+		for ; n > 0; n-- {
+			if hasNEON {
+				accumBlockNEON(acc, data, key)
+			} else {
+				accumBlockScalar(acc, data, key)
+			}
+			data = unsafe.Add(data, _block)
+		}
+	}
 }
 
 // Sum64 returns the 64-bit hash of the written data.

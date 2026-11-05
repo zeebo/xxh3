@@ -401,3 +401,31 @@ func BenchmarkHasher128(b *testing.B) {
 		})
 	}
 }
+
+func TestHasherSplits(t *testing.T) {
+	rng := rand.New(rand.NewSource(1))
+	buf := make([]byte, 20<<10)
+	rng.Read(buf)
+	for i := range 2000 {
+		n := rng.Intn(len(buf))
+		seed := uint64(i % 3)
+		check := func() {
+			h := NewSeed(seed)
+			for p := 0; p < n; {
+				w := min(n-p, rng.Intn(3*_block))
+				h.Write(buf[p : p+w])
+				p += w
+			}
+			if exp, got := HashSeed(buf[:n], seed), h.Sum64(); exp != got {
+				t.Fatalf("%d bytes, seed %d: %016x != %016x", n, seed, got, exp)
+			}
+			if exp, got := Hash128Seed(buf[:n], seed), h.Sum128(); exp != got {
+				t.Fatalf("%d bytes, seed %d: 128 bit hash differs", n, seed)
+			}
+		}
+		withAVX512(check)
+		withAVX2(check)
+		withSSE2(check)
+		withGeneric(check)
+	}
+}
