@@ -16,23 +16,96 @@ GLOBL prime_neon<>(SB), RODATA|NOPTR, $16
 // UMULL Vd.2D, Vn.2S, Vm.2S - Widening multiply 32x32→64
 #define UMULL_2D_2S_2S(Vd, Vn, Vm) WORD $(0x2EA0C000 | ((Vm) << 16) | ((Vn) << 5) | (Vd))
 
-// ROUND processes one 16-byte chunk: data XOR key, multiply, accumulate
-// Uses V5 for data, V6 for key, V7/V8/V9 temps
-// V_acc_num = numeric reg for macros (1-4), V_acc = symbolic (V1-V4)
-#define ROUND(data_off, key_off, V_acc_num, V_acc) \
-	ADD  $data_off, R1, R5          \
-	VLD1 (R5), [V5.D2]              \
-	ADD  $key_off, R2, R5           \
-	VLD1 (R5), [V6.D2]              \
-	VEOR V5.B16, V6.B16, V6.B16     \
-	XTN_2S_2D(7, 6)                 \
-	SHRN_32_2D_2S(8, 6)             \
-	UMULL_2D_2S_2S(9, 7, 8)         \
-	VEXT $8, V5.B16, V5.B16, V5.B16 \
-	VADD V5.D2, V_acc.D2, V_acc.D2  \
-	VADD V9.D2, V_acc.D2, V_acc.D2
+// UMLAL Vd.2D, Vn.2S, Vm.2S - Widening multiply 32x32→64 of the low halves, added to Vd
+#define UMLAL_2D_2S_2S(Vd, Vn, Vm) WORD $(0x2EA08000 | ((Vm) << 16) | ((Vn) << 5) | (Vd))
 
-// SCRAMBLE for one accumulator pair
+// UMLAL2 Vd.2D, Vn.4S, Vm.4S - Widening multiply 32x32→64 of the high halves, added to Vd
+#define UMLAL2_2D_4S_4S(Vd, Vn, Vm) WORD $(0x6EA08000 | ((Vm) << 16) | ((Vn) << 5) | (Vd))
+
+// Register layout shared by both functions. The eight 64-bit accumulators are
+// split the way upstream xxHash splits them on AArch64: six in NEON registers
+// and two in general purpose registers. The vector pipes are the bottleneck,
+// and the scalar lanes run beside them on the integer pipes.
+//
+//   V1, V2, V3      acc[0:2], acc[2:4], acc[4:6], without the swapped-data term
+//   V11, V12, V13   sum of the raw data added to those lanes since the last FOLD
+//   R8, R9          acc[6], acc[7]
+//   V0, R19         prime32_1, for the scramble
+//
+// A round is acc[i] += data[i^1] + lo32(data[i]^key[i]) * hi32(data[i]^key[i]).
+// Swapping the data words costs one vector instruction per register per
+// stripe, so the NEON lanes add the data unswapped into V11-V13 and FOLD swaps
+// that sum once, before the accumulators are next read.
+
+// LOAD reads the accumulators at (R0) and clears the pending data sums.
+#define LOAD \
+	VLD1  (R0), [V1.D2, V2.D2, V3.D2] \
+	LDP   48(R0), (R8, R9)            \
+	VMOVI $0, V11.B16                 \
+	VMOVI $0, V12.B16                 \
+	VMOVI $0, V13.B16
+
+// FOLD adds the pending data sums, swapped, into V1-V3.
+#define FOLD \
+	VEXT $8, V11.B16, V11.B16, V11.B16 \
+	VEXT $8, V12.B16, V12.B16, V12.B16 \
+	VEXT $8, V13.B16, V13.B16, V13.B16 \
+	VADD V11.D2, V1.D2, V1.D2          \
+	VADD V12.D2, V2.D2, V2.D2          \
+	VADD V13.D2, V3.D2, V3.D2
+
+// STORE folds and writes the accumulators back to (R0).
+#define STORE \
+	FOLD                              \
+	VST1 [V1.D2, V2.D2, V3.D2], (R0) \
+	STP  (R8, R9), 48(R0)
+
+// ROUND accumulates the 64-byte stripe at doff(dbase). Its 64 bytes of key are
+// already in registers: K0-K2 for the NEON lanes, KA and KB for the scalar ones.
+//
+// V5-V7 hold the data and V8-V10 data XOR key. Viewing V8/V9 as 4x32 bits,
+// UZP1 gathers the low half of their four 64-bit lanes in V14 and UZP2 the
+// high half in V15, so one UMLAL/UMLAL2 pair multiplies both registers. V10
+// has no partner and is narrowed on its own. R10/R11, R14/R15 and R20/R21
+// play the same roles for the scalar lanes.
+#define ROUND(dbase, doff, K0, K1, K2, KA, KB) \
+	FMOVQ  (doff)(dbase), F5            \
+	FMOVQ  (doff+16)(dbase), F6         \
+	FMOVQ  (doff+32)(dbase), F7         \
+	LDP    (doff+48)(dbase), (R10, R11) \
+	VEOR   V5.B16, K0.B16, V8.B16       \
+	VEOR   V6.B16, K1.B16, V9.B16       \
+	VEOR   V7.B16, K2.B16, V10.B16      \
+	EOR    R10, KA, R14                 \
+	EOR    R11, KB, R15                 \
+	VUZP1  V9.S4, V8.S4, V14.S4         \
+	VUZP2  V9.S4, V8.S4, V15.S4         \
+	XTN_2S_2D(16, 10)                   \
+	SHRN_32_2D_2S(17, 10)               \
+	LSR    $32, R14, R20                \
+	LSR    $32, R15, R21                \
+	UMLAL_2D_2S_2S(1, 14, 15)           \
+	UMLAL2_2D_4S_4S(2, 14, 15)          \
+	UMLAL_2D_2S_2S(3, 16, 17)           \
+	ADD    R11, R8, R8                  \
+	ADD    R10, R9, R9                  \
+	UMADDL R20, R8, R14, R8             \
+	UMADDL R21, R9, R15, R9             \
+	VADD   V5.D2, V11.D2, V11.D2        \
+	VADD   V6.D2, V12.D2, V12.D2        \
+	VADD   V7.D2, V13.D2, V13.D2
+
+// STRIPE is ROUND with the key read from koff(kbase).
+#define STRIPE(dbase, doff, kbase, koff) \
+	FMOVQ (koff)(kbase), F20            \
+	FMOVQ (koff+16)(kbase), F21         \
+	FMOVQ (koff+32)(kbase), F22         \
+	LDP   (koff+48)(kbase), (R12, R13)  \
+	ROUND(dbase, doff, V20, V21, V22, R12, R13)
+
+// SCRAMBLE for one NEON accumulator pair: acc = (acc ^ acc>>47 ^ key) * prime32_1
+// Uses V5 for data, V6/V7/V8 temps
+// V_acc_num = numeric reg for macros (1-3), V_acc = symbolic (V1-V3)
 #define SCRAMBLE(key_off, V_acc_num, V_acc) \
 	VUSHR $47, V_acc.D2, V5.D2         \
 	VEOR  V_acc.B16, V5.B16, V_acc.B16 \
@@ -46,6 +119,92 @@ GLOBL prime_neon<>(SB), RODATA|NOPTR, $16
 	VSHL  $32, V8.D2, V8.D2            \
 	VADD  V8.D2, V_acc.D2, V_acc.D2
 
+// SCRAMBLE_SCALAR is SCRAMBLE for one accumulator held in Racc.
+#define SCRAMBLE_SCALAR(key_off, Racc) \
+	MOVD key_off(R2), R10     \
+	EOR  Racc>>47, Racc, Racc \
+	EOR  R10, Racc, Racc      \
+	MUL  R19, Racc, Racc
+
+// SCRAMBLE_ALL folds the pending data sums and scrambles all eight
+// accumulators with key[128:192].
+#define SCRAMBLE_ALL \
+	FOLD                     \
+	VMOVI $0, V11.B16        \
+	VMOVI $0, V12.B16        \
+	VMOVI $0, V13.B16        \
+	SCRAMBLE(128, 1, V1)     \
+	SCRAMBLE(144, 2, V2)     \
+	SCRAMBLE(160, 3, V3)     \
+	SCRAMBLE_SCALAR(176, R8) \
+	SCRAMBLE_SCALAR(184, R9)
+
+// BLOCK accumulates the 1024 bytes (16 stripes) at (R1) and scrambles.
+//
+// Stripe n reads data[64n:64n+64] and key[8n:8n+64]. The key advances by only
+// 8 bytes per stripe, so two stripes later the same key bytes are used one
+// 16-byte lane further down. Reading all 64 key bytes for every stripe costs
+// about 15% on Neoverse V2, so each stripe reads only what is new to it: one
+// vector into V20-V22 (even stripes) or V23-V25 (odd stripes), and one word
+// into R12/R13, with the registers rotating roles.
+//
+// The second half is addressed from R7 to keep the LDP offsets encodable.
+#define BLOCK \
+	FMOVQ  0(R2), F20                       \
+	FMOVQ  16(R2), F21                      \
+	FMOVQ  32(R2), F22                      \
+	LDP    48(R2), (R12, R13)               \
+	ROUND(R1, 0, V20, V21, V22, R12, R13)   \
+	FMOVQ  8(R2), F23                       \
+	FMOVQ  24(R2), F24                      \
+	FMOVQ  40(R2), F25                      \
+	MOVD   64(R2), R12                      \
+	ROUND(R1, 64, V23, V24, V25, R13, R12)  \
+	FMOVQ  48(R2), F20                      \
+	MOVD   72(R2), R13                      \
+	ROUND(R1, 128, V21, V22, V20, R12, R13) \
+	FMOVQ  56(R2), F23                      \
+	MOVD   80(R2), R12                      \
+	ROUND(R1, 192, V24, V25, V23, R13, R12) \
+	FMOVQ  64(R2), F21                      \
+	MOVD   88(R2), R13                      \
+	ROUND(R1, 256, V22, V20, V21, R12, R13) \
+	FMOVQ  72(R2), F24                      \
+	MOVD   96(R2), R12                      \
+	ROUND(R1, 320, V25, V23, V24, R13, R12) \
+	FMOVQ  80(R2), F22                      \
+	MOVD   104(R2), R13                     \
+	ROUND(R1, 384, V20, V21, V22, R12, R13) \
+	FMOVQ  88(R2), F25                      \
+	MOVD   112(R2), R12                     \
+	ROUND(R1, 448, V23, V24, V25, R13, R12) \
+	ADD    $512, R1, R7                     \
+	FMOVQ  96(R2), F20                      \
+	MOVD   120(R2), R13                     \
+	ROUND(R7, 0, V21, V22, V20, R12, R13)   \
+	FMOVQ  104(R2), F23                     \
+	MOVD   128(R2), R12                     \
+	ROUND(R7, 64, V24, V25, V23, R13, R12)  \
+	FMOVQ  112(R2), F21                     \
+	MOVD   136(R2), R13                     \
+	ROUND(R7, 128, V22, V20, V21, R12, R13) \
+	FMOVQ  120(R2), F24                     \
+	MOVD   144(R2), R12                     \
+	ROUND(R7, 192, V25, V23, V24, R13, R12) \
+	FMOVQ  128(R2), F22                     \
+	MOVD   152(R2), R13                     \
+	ROUND(R7, 256, V20, V21, V22, R12, R13) \
+	FMOVQ  136(R2), F25                     \
+	MOVD   160(R2), R12                     \
+	ROUND(R7, 320, V23, V24, V25, R13, R12) \
+	FMOVQ  144(R2), F20                     \
+	MOVD   168(R2), R13                     \
+	ROUND(R7, 384, V21, V22, V20, R12, R13) \
+	FMOVQ  152(R2), F23                     \
+	MOVD   176(R2), R12                     \
+	ROUND(R7, 448, V24, V25, V23, R13, R12) \
+	SCRAMBLE_ALL
+
 // func accumNEON(acc *[8]uint64, data *byte, key *byte, len uint64)
 TEXT ·accumNEON(SB), NOSPLIT, $0-32
 	MOVD acc+0(FP), R0
@@ -53,123 +212,24 @@ TEXT ·accumNEON(SB), NOSPLIT, $0-32
 	MOVD key+16(FP), R2
 	MOVD len+24(FP), R3
 
-	// Load accumulators: V1=[acc0,acc1], V2=[acc2,acc3], V3=[acc4,acc5], V4=[acc6,acc7]
-	VLD1 (R0), [V1.D2, V2.D2, V3.D2, V4.D2]
+	LOAD
 
-	// Load prime constant
-	MOVD $prime_neon<>(SB), R4
-	VLD1 (R4), [V0.D2]
-
-accum_large:
+	// Inputs of at most one block never scramble
 	CMP $1024, R3
 	BLE accum
 
-	// Process 1024 bytes = 16 stripes of 64 bytes each
-	// Stripe 0: data[0:64], key[0:64]
-	ROUND(0, 0, 1, V1)
-	ROUND(16, 16, 2, V2)
-	ROUND(32, 32, 3, V3)
-	ROUND(48, 48, 4, V4)
+	// Load prime constant for scramble
+	MOVD $prime_neon<>(SB), R4
+	VLD1 (R4), [V0.D2]
+	MOVD $0x9e3779b1, R19
 
-	// Stripe 1: data[64:128], key[8:72]
-	ROUND(64, 8, 1, V1)
-	ROUND(80, 24, 2, V2)
-	ROUND(96, 40, 3, V3)
-	ROUND(112, 56, 4, V4)
-
-	// Stripe 2: data[128:192], key[16:80]
-	ROUND(128, 16, 1, V1)
-	ROUND(144, 32, 2, V2)
-	ROUND(160, 48, 3, V3)
-	ROUND(176, 64, 4, V4)
-
-	// Stripe 3: data[192:256], key[24:88]
-	ROUND(192, 24, 1, V1)
-	ROUND(208, 40, 2, V2)
-	ROUND(224, 56, 3, V3)
-	ROUND(240, 72, 4, V4)
-
-	// Stripe 4: data[256:320], key[32:96]
-	ROUND(256, 32, 1, V1)
-	ROUND(272, 48, 2, V2)
-	ROUND(288, 64, 3, V3)
-	ROUND(304, 80, 4, V4)
-
-	// Stripe 5: data[320:384], key[40:104]
-	ROUND(320, 40, 1, V1)
-	ROUND(336, 56, 2, V2)
-	ROUND(352, 72, 3, V3)
-	ROUND(368, 88, 4, V4)
-
-	// Stripe 6: data[384:448], key[48:112]
-	ROUND(384, 48, 1, V1)
-	ROUND(400, 64, 2, V2)
-	ROUND(416, 80, 3, V3)
-	ROUND(432, 96, 4, V4)
-
-	// Stripe 7: data[448:512], key[56:120]
-	ROUND(448, 56, 1, V1)
-	ROUND(464, 72, 2, V2)
-	ROUND(480, 88, 3, V3)
-	ROUND(496, 104, 4, V4)
-
-	// Stripe 8: data[512:576], key[64:128]
-	ROUND(512, 64, 1, V1)
-	ROUND(528, 80, 2, V2)
-	ROUND(544, 96, 3, V3)
-	ROUND(560, 112, 4, V4)
-
-	// Stripe 9: data[576:640], key[72:136] -> but key is 192 bytes, key[72]=ok
-	ROUND(576, 72, 1, V1)
-	ROUND(592, 88, 2, V2)
-	ROUND(608, 104, 3, V3)
-	ROUND(624, 120, 4, V4)
-
-	// Stripe 10: data[640:704], key[80:144]
-	ROUND(640, 80, 1, V1)
-	ROUND(656, 96, 2, V2)
-	ROUND(672, 112, 3, V3)
-	ROUND(688, 128, 4, V4)
-
-	// Stripe 11: data[704:768], key[88:152]
-	ROUND(704, 88, 1, V1)
-	ROUND(720, 104, 2, V2)
-	ROUND(736, 120, 3, V3)
-	ROUND(752, 136, 4, V4)
-
-	// Stripe 12: data[768:832], key[96:160]
-	ROUND(768, 96, 1, V1)
-	ROUND(784, 112, 2, V2)
-	ROUND(800, 128, 3, V3)
-	ROUND(816, 144, 4, V4)
-
-	// Stripe 13: data[832:896], key[104:168]
-	ROUND(832, 104, 1, V1)
-	ROUND(848, 120, 2, V2)
-	ROUND(864, 136, 3, V3)
-	ROUND(880, 152, 4, V4)
-
-	// Stripe 14: data[896:960], key[112:176]
-	ROUND(896, 112, 1, V1)
-	ROUND(912, 128, 2, V2)
-	ROUND(928, 144, 3, V3)
-	ROUND(944, 160, 4, V4)
-
-	// Stripe 15: data[960:1024], key[120:184]
-	ROUND(960, 120, 1, V1)
-	ROUND(976, 136, 2, V2)
-	ROUND(992, 152, 3, V3)
-	ROUND(1008, 168, 4, V4)
-
-	// Scramble with key[128:]
-	SCRAMBLE(128, 1, V1)
-	SCRAMBLE(144, 2, V2)
-	SCRAMBLE(160, 3, V3)
-	SCRAMBLE(176, 4, V4)
+accum_large:
+	BLOCK
 
 	ADD $1024, R1, R1
 	SUB $1024, R3, R3
-	B   accum_large
+	CMP $1024, R3
+	BGT accum_large
 
 accum:
 	// If no remaining bytes, we're done
@@ -184,52 +244,8 @@ accum:
 
 accum_loop:
 	// Process one 64-byte stripe
-	ADD  R4, R2, R5
-	VLD1 (R1), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V1.D2, V1.D2
-	VADD V9.D2, V1.D2, V1.D2
-
-	ADD  $16, R1, R7
-	ADD  $16, R5, R5
-	VLD1 (R7), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V2.D2, V2.D2
-	VADD V9.D2, V2.D2, V2.D2
-
-	ADD  $32, R1, R7
-	ADD  $16, R5, R5
-	VLD1 (R7), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V3.D2, V3.D2
-	VADD V9.D2, V3.D2, V3.D2
-
-	ADD  $48, R1, R7
-	ADD  $16, R5, R5
-	VLD1 (R7), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V4.D2, V4.D2
-	VADD V9.D2, V4.D2, V4.D2
+	ADD R4, R2, R5
+	STRIPE(R1, 0, R5, 0)
 
 	ADD  $64, R1, R1
 	SUB  $64, R3, R3
@@ -247,55 +263,11 @@ finalize:
 	SUB $64, R6, R6
 
 	// Final key offset is 121
-	ADD  $121, R2, R5
-	VLD1 (R6), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V1.D2, V1.D2
-	VADD V9.D2, V1.D2, V1.D2
-
-	ADD  $16, R6, R6
-	ADD  $16, R5, R5
-	VLD1 (R6), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V2.D2, V2.D2
-	VADD V9.D2, V2.D2, V2.D2
-
-	ADD  $16, R6, R6
-	ADD  $16, R5, R5
-	VLD1 (R6), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V3.D2, V3.D2
-	VADD V9.D2, V3.D2, V3.D2
-
-	ADD  $16, R6, R6
-	ADD  $16, R5, R5
-	VLD1 (R6), [V5.D2]
-	VLD1 (R5), [V6.D2]
-	VEOR V5.B16, V6.B16, V6.B16
-	XTN_2S_2D(7, 6)
-	SHRN_32_2D_2S(8, 6)
-	UMULL_2D_2S_2S(9, 7, 8)
-	VEXT $8, V5.B16, V5.B16, V5.B16
-	VADD V5.D2, V4.D2, V4.D2
-	VADD V9.D2, V4.D2, V4.D2
+	ADD $121, R2, R5
+	STRIPE(R6, 0, R5, 0)
 
 done:
-	VST1 [V1.D2, V2.D2, V3.D2, V4.D2], (R0)
+	STORE
 	RET
 
 // func accumBlockNEON(acc *[8]uint64, data *byte, key *byte)
@@ -305,113 +277,14 @@ TEXT ·accumBlockNEON(SB), NOSPLIT, $0-24
 	MOVD data+8(FP), R1
 	MOVD key+16(FP), R2
 
-	VLD1 (R0), [V1.D2, V2.D2, V3.D2, V4.D2]
+	LOAD
 
 	// Load prime constant for scramble
 	MOVD $prime_neon<>(SB), R4
 	VLD1 (R4), [V0.D2]
+	MOVD $0x9e3779b1, R19
 
-	// Stripe 0
-	ROUND(0, 0, 1, V1)
-	ROUND(16, 16, 2, V2)
-	ROUND(32, 32, 3, V3)
-	ROUND(48, 48, 4, V4)
+	BLOCK
 
-	// Stripe 1
-	ROUND(64, 8, 1, V1)
-	ROUND(80, 24, 2, V2)
-	ROUND(96, 40, 3, V3)
-	ROUND(112, 56, 4, V4)
-
-	// Stripe 2
-	ROUND(128, 16, 1, V1)
-	ROUND(144, 32, 2, V2)
-	ROUND(160, 48, 3, V3)
-	ROUND(176, 64, 4, V4)
-
-	// Stripe 3
-	ROUND(192, 24, 1, V1)
-	ROUND(208, 40, 2, V2)
-	ROUND(224, 56, 3, V3)
-	ROUND(240, 72, 4, V4)
-
-	// Stripe 4
-	ROUND(256, 32, 1, V1)
-	ROUND(272, 48, 2, V2)
-	ROUND(288, 64, 3, V3)
-	ROUND(304, 80, 4, V4)
-
-	// Stripe 5
-	ROUND(320, 40, 1, V1)
-	ROUND(336, 56, 2, V2)
-	ROUND(352, 72, 3, V3)
-	ROUND(368, 88, 4, V4)
-
-	// Stripe 6
-	ROUND(384, 48, 1, V1)
-	ROUND(400, 64, 2, V2)
-	ROUND(416, 80, 3, V3)
-	ROUND(432, 96, 4, V4)
-
-	// Stripe 7
-	ROUND(448, 56, 1, V1)
-	ROUND(464, 72, 2, V2)
-	ROUND(480, 88, 3, V3)
-	ROUND(496, 104, 4, V4)
-
-	// Stripe 8
-	ROUND(512, 64, 1, V1)
-	ROUND(528, 80, 2, V2)
-	ROUND(544, 96, 3, V3)
-	ROUND(560, 112, 4, V4)
-
-	// Stripe 9
-	ROUND(576, 72, 1, V1)
-	ROUND(592, 88, 2, V2)
-	ROUND(608, 104, 3, V3)
-	ROUND(624, 120, 4, V4)
-
-	// Stripe 10
-	ROUND(640, 80, 1, V1)
-	ROUND(656, 96, 2, V2)
-	ROUND(672, 112, 3, V3)
-	ROUND(688, 128, 4, V4)
-
-	// Stripe 11
-	ROUND(704, 88, 1, V1)
-	ROUND(720, 104, 2, V2)
-	ROUND(736, 120, 3, V3)
-	ROUND(752, 136, 4, V4)
-
-	// Stripe 12
-	ROUND(768, 96, 1, V1)
-	ROUND(784, 112, 2, V2)
-	ROUND(800, 128, 3, V3)
-	ROUND(816, 144, 4, V4)
-
-	// Stripe 13
-	ROUND(832, 104, 1, V1)
-	ROUND(848, 120, 2, V2)
-	ROUND(864, 136, 3, V3)
-	ROUND(880, 152, 4, V4)
-
-	// Stripe 14
-	ROUND(896, 112, 1, V1)
-	ROUND(912, 128, 2, V2)
-	ROUND(928, 144, 3, V3)
-	ROUND(944, 160, 4, V4)
-
-	// Stripe 15
-	ROUND(960, 120, 1, V1)
-	ROUND(976, 136, 2, V2)
-	ROUND(992, 152, 3, V3)
-	ROUND(1008, 168, 4, V4)
-
-	// Scramble
-	SCRAMBLE(128, 1, V1)
-	SCRAMBLE(144, 2, V2)
-	SCRAMBLE(160, 3, V3)
-	SCRAMBLE(176, 4, V4)
-
-	VST1 [V1.D2, V2.D2, V3.D2, V4.D2], (R0)
+	STORE
 	RET
